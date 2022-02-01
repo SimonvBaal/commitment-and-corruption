@@ -1,0 +1,358 @@
+---
+title: "cleaning_exp1_corruption"
+author: "Simon van Baal"
+date: "01/02/2022"
+output: html_document
+---
+
+```{r setup}
+library(tidyverse)
+```
+
+
+```{r Loading data}
+Q <- read.csv("Questionnaire.csv", stringsAsFactors = FALSE)
+
+# These are the collaborative rounds
+CorrCollaborative <- read.csv("Corruption_23.csv")
+CorrCollaborative2 <- read.csv("September23.csv")
+
+## Practice and individual rolls
+CorrIndividual <- read.csv("Corruption_14.csv")
+CorrIndividual2 <- read.csv("September14.csv")
+
+```
+
+
+```{r Data Cleaning}
+Q <- Q[-2, ]
+
+## Exclude previews, tests, and unfinished questionnaires
+Q <- Q[!(Q$Finished=="0" | Q$DistributionChannel == "preview" | 
+           Q$id == '%SURVEY_CODE%' | Q$id == '21744'),]
+Q <-Q %>% filter(Finished == 1, 
+                 DistributionChannel != "preview", 
+                 id != "%SURVEY_CODE%" , 
+                 id != '21744') %>% 
+  dplyr::select(-RecipientEmail, 
+            -RecipientFirstName, 
+            -RecipientLastName, 
+            -ExternalReference, 
+            -Finished,
+            -Progress,
+            -Status,
+            -IPAddress,
+            -RecordedDate,
+            -LocationLatitude,
+            -LocationLongitude,
+            -ResponseId,
+            -DistributionChannel,
+            -UserLanguage,
+            -id...Topics)
+
+## Remove duplicate groups.
+CorrCollaborative2$group[CorrCollaborative2$group == 1] <- 17
+CorrCollaborative2$group[CorrCollaborative2$group == 3] <- 18
+CorrCollaborative2$group[CorrCollaborative2$group == 6] <- 19
+CorrCollaborative2$group[CorrCollaborative2$group == 8] <- 20
+CorrIndividual2$group[CorrIndividual2$group == 1] <- 17
+CorrIndividual2$group[CorrIndividual2$group == 3] <- 18
+CorrIndividual2$group[CorrIndividual2$group == 6] <- 19
+CorrIndividual2$group[CorrIndividual2$group == 8] <- 20
+
+## Merge datasets of different periods (pre-summer + post-summer)
+## We will merge the individual and collaborative trials later.
+CorrCollaborative <- rbind(CorrCollaborative, CorrCollaborative2)
+CorrIndividual <- rbind(CorrIndividual, CorrIndividual2)
+rm(CorrCollaborative2)
+rm(CorrIndividual2)
+
+## Tidying
+CorrCollaborative <- CorrCollaborative %>% 
+  mutate(Report = as.character(response1)) %>% 
+  dplyr::select(-condition,
+         -type,
+         -error1,
+         -comment,
+         -response1)
+
+CorrIndividual <- CorrIndividual %>%
+  mutate(round = label,
+         RT = comment,
+         Report = as.character(response)) %>%
+  dplyr::select(-comment,
+                -label,
+                -response)
+
+CorrIndividual$Report[CorrIndividual$Report == "2271g"] <- "22719"
+CorrIndividual$Report[CorrIndividual$Report == "22458" & CorrIndividual$group == 19] <- "22689"
+CorrIndividual$Report[CorrIndividual$Report == "7"] <- "22323"
+CorrIndividual$Report[CorrIndividual$Report == "1791535"] <- "22456"
+
+## Deleting pilot, test, and error groups
+CorrCollaborative <- CorrCollaborative[(CorrCollaborative$group == 17 | CorrCollaborative$group == 18 |
+                         CorrCollaborative$group == 19 | CorrCollaborative$group == 20 |
+                         CorrCollaborative$group == 33 | CorrCollaborative$group == 35 |
+                         CorrCollaborative$group == 37 | CorrCollaborative$group == 39 |
+                         CorrCollaborative$group == 41 | CorrCollaborative$group == 44 |
+                         CorrCollaborative$group == 46 | CorrCollaborative$group == 47 |
+                         CorrCollaborative$group == 49),]
+
+CorrIndividual <- CorrIndividual[(CorrIndividual$group == 17 | CorrIndividual$group == 18 |
+                          CorrIndividual$group == 19 | CorrIndividual$group == 20 |
+                          CorrIndividual$group == 33 | CorrIndividual$group == 35 |
+                          CorrIndividual$group == 37 | CorrIndividual$group == 39 |
+                          CorrIndividual$group == 41 | CorrIndividual$group == 44 |
+                          CorrIndividual$group == 46 | CorrIndividual$group == 47 |
+                          CorrIndividual$group == 49),]
+
+CorrIndividual$RT <- as.character(CorrIndividual$RT)
+## Trimming excess characters
+CorrIndividual$RT <- substring(CorrIndividual$RT, first=34)
+## Trimming existing white spaces due to RTs in the double digits
+CorrIndividual$RT <- str_trim(CorrIndividual$RT, side = "left")
+
+## Cleaning out the response column
+CorrIndividual$round <- as.character(CorrIndividual$round)
+CorrIndividual <- 
+  CorrIndividual %>% filter(Report != "b" & Report != "d") %>%
+  mutate(Report = as.numeric(Report))
+
+## Now let's create a dataframe that contains the subject ids, linking them to group number
+## and subject number, for the sake of clarity.
+Ids <- CorrIndividual[(CorrIndividual$Report > 7),] %>% 
+  dplyr::select(Report, group, subject) %>%
+  mutate(ID.number = Report,
+         Report = NULL)
+#nrow(Ids)
+#[1] 106
+
+## Remove participant ID observations from main dataset,
+# seeing as we can figure this out easily by matching subject no + group
+CorrIndividual <- 
+  CorrIndividual %>% 
+  filter(round != "pid") %>%
+  mutate(round = substring(round, first = 5),
+         RT = as.numeric(RT),
+         stage = NULL)
+
+## Set RTs back to numeric 
+CorrIndividual$RT <- as.numeric(CorrIndividual$RT)
+CorrIndividual$stage <- NA 
+
+## Now we bind by row, such that all the data is in the same format, which is why Corr_Ind
+## needed the transformation
+FullData <- rbind(CorrIndividual, CorrCollaborative)
+rm(CorrIndividual)
+rm(CorrCollaborative)
+
+## Merge ID numbers, such that each participant's answers can be tracked.
+FullData <- merge(FullData, Ids, all.x = TRUE)
+
+##Assigning a player role to each observation
+FullData$PlayerNo <- ifelse(FullData$subject == 1, "First Mover" , 
+                            ifelse(FullData$subject == 3, "First Mover",
+                                   ifelse(FullData$subject == 5, "First Mover", 
+                                          ifelse(FullData$subject == 7, "First Mover",
+                                                 ifelse(FullData$subject == 9, "First Mover",
+                                                        ifelse(FullData$subject == 11, "First Mover", "Second Mover"))))))
+
+FullData$round <- as.numeric(FullData$round)
+#labelling the parts
+FullData$Condition <- ifelse(FullData$round >= 300, "Practice",
+                             ifelse(FullData$round >= 200, "Post-Collaborative",
+                                    ifelse(FullData$round >= 100, "Pre-Collaborative",
+                                           ifelse(FullData$round >= 0, "Collaborative", NA))))
+
+##Discard practice trials
+FullData <- FullData[!(FullData$Condition == "Practice"), ]
+
+FullData$HighEffort <- ifelse(FullData$round <= 9, 0, 
+                             ifelse(FullData$round <= 18, 1,
+                                    ifelse(FullData$round <= 27, 0,
+                                           ifelse(FullData$round <= 36, 1, NA))))
+FullData$LowEffort <- ifelse(FullData$round <= 9, 1,
+                             ifelse(FullData$round <= 18, 0,
+                                    ifelse(FullData$round <= 27, 1,
+                                           ifelse(FullData$round <= 36, 0, NA))))
+
+FullData$Order <- ifelse(FullData$group == 17 | FullData$group == 18 |
+                             FullData$group == 20 | FullData$group == 35 | 
+                             FullData$group == 39 | FullData$group == 47 | 
+                             FullData$group == 49, "Mirror", "Regular")
+FullData$Honourcode <- ifelse(FullData$group == 37 | FullData$group == 39,
+                               1, 0)
+
+FullData$ShortPartnership <- ifelse(FullData$round <= 18  & FullData$Order == "Regular", 1,
+                             ifelse(FullData$round > 18  & FullData$Order == "Mirror", 1, 0))
+
+FullData$LongPartnership <- ifelse(FullData$round > 18  & FullData$Order == "Regular", 1,
+                            ifelse(FullData$round <= 18  & FullData$Order == "Mirror", 1, 0))
+
+##Find the doubles
+FullData$Double <- ifelse(FullData$Condition == "Collaborative", duplicated(FullData[c(1,4,5,7)]) | 
+                             duplicated(FullData[c(1,4,5,7)], fromLast = TRUE), NA) 
+FullData$Double <- ifelse(FullData$Double == TRUE, 1, 
+                           ifelse(FullData$Double == FALSE, 0, NA))
+
+idmatch <- match(Ids$ID.number, Q$id)
+Q <- Q[idmatch,] 
+rm(Ids)
+rm(idmatch)
+
+
+##### Part 3: Incorporation of Questionnaire
+
+## HEXACO begins at Q32
+# Some questions are coded inversely, because the question is an inverted
+# question. This way the mean for a trait becomes higher as the trait gets
+# stronger.
+
+## Order Q such that its ordering fits Behaviour
+Q <- Q[ order(match(Q$id, FullData$ID.number)), ]
+
+## Create dataframes for psychological traits
+H.Hexaco <- data.frame(Q$id, Q$Q37, Q$Q61, Q$Q85, Q$Q43, Q$Q67, Q$Q91, Q$Q49, Q$Q73, Q$Q55, Q$Q79, stringsAsFactors = FALSE)
+H.Hexaco <- data.matrix(H.Hexaco)
+E.Hexaco <- data.frame(Q$id, Q$Q36, Q$Q60, Q$Q84, Q$Q42, Q$Q66, Q$Q48, Q$Q72, Q$Q54, Q$Q78, Q$Q90, stringsAsFactors = FALSE)
+E.Hexaco <- data.matrix(E.Hexaco)
+X.Hexaco <- data.frame(Q$id, Q$Q35, Q$Q59, Q$Q83, Q$Q41, Q$Q65, Q$Q89, Q$Q47, Q$Q71, Q$Q53, Q$Q77, stringsAsFactors = FALSE)
+X.Hexaco <- data.matrix(X.Hexaco)
+A.Hexaco <- data.frame(Q$id, Q$Q34, Q$Q58, Q$Q40, Q$Q64, Q$Q82, Q$Q46, Q$Q70, Q$Q88, Q$Q52, Q$Q76, stringsAsFactors = FALSE)
+A.Hexaco <- data.matrix(A.Hexaco)
+C.Hexaco <- data.frame(Q$id, Q$Q33, Q$Q57, Q$Q39, Q$Q63, Q$Q45, Q$Q69, Q$Q81, Q$Q51, Q$Q75, Q$Q87, stringsAsFactors = FALSE)
+C.Hexaco <- data.matrix(C.Hexaco)
+O.Hexaco <- data.frame(Q$id, Q$Q32, Q$Q56, Q$Q38, Q$Q62, Q$Q44, Q$Q68, Q$Q80, Q$Q50, Q$Q74, Q$Q86, stringsAsFactors = FALSE)
+O.Hexaco <- data.matrix(O.Hexaco)
+
+## Create mean scores for psychological traits
+H.Hexaco1 <- rowMeans(H.Hexaco [, -1])
+E.Hexaco1 <- rowMeans(E.Hexaco [, -1])
+X.Hexaco1 <- rowMeans(X.Hexaco [, -1])
+A.Hexaco1 <- rowMeans(A.Hexaco [, -1])
+C.Hexaco1 <- rowMeans(C.Hexaco [, -1])
+O.Hexaco1 <- rowMeans(O.Hexaco [, -1])
+
+## Now make variables 72 times longer in order to fit FullData
+FullData$Age <- rep(Q$Q94, each = 72)
+Q$Q4 <- ifelse(Q$Q4 == 2, 0, 1)
+FullData$Gender <- rep(Q$Q4, each = 72)
+
+FullData$H.Hexaco <- rep(H.Hexaco1, each = 72)
+FullData$E.Hexaco <- rep(E.Hexaco1, each = 72)
+FullData$X.Hexaco <- rep(X.Hexaco1, each = 72)
+FullData$A.Hexaco <- rep(A.Hexaco1, each = 72)
+FullData$C.Hexaco <- rep(C.Hexaco1, each = 72)
+FullData$O.Hexaco <- rep(O.Hexaco1, each = 72)
+
+rm(H.Hexaco)
+rm(E.Hexaco)
+rm(X.Hexaco)
+rm(A.Hexaco)
+rm(C.Hexaco)
+rm(O.Hexaco)
+
+rm(H.Hexaco1)
+rm(E.Hexaco1)
+rm(X.Hexaco1)
+rm(A.Hexaco1)
+rm(C.Hexaco1)
+rm(O.Hexaco1)
+## Ready Social Mindfulness for incorporation.
+
+SoMi <- data.frame(Q$id, Q$Q8, Q$Q9, Q$Q10, Q$Q11, Q$Q12, Q$Q13, Q$Q14, Q$Q15, Q$Q16, Q$Q17, Q$Q18, Q$Q19, stringsAsFactors = FALSE)
+SoMi <- data.matrix(SoMi)
+SoMi1 <- rowMeans(SoMi [, -1])
+FullData$SoMi <- rep(SoMi1, each = 72)
+rm(SoMi)
+rm(SoMi1)
+
+## Ready Studies dummies
+
+
+Studies <- factor(ifelse(Q$Q1 == 1, "Business",
+                         ifelse(
+                           Q$Q1 == 2, "Economics",
+                           ifelse(Q$Q1 == 3, "Science",
+                                  ifelse(
+                                    Q$Q1 == 4,
+                                    "Humanities",
+                                    ifelse(
+                                      Q$Q1 == 5,
+                                      "Natural Sciences",
+                                      ifelse(Q$Q1 == 6, "Psychology",
+                                             ifelse(Q$Q1 == 7, "Other", NA))
+                                    )
+                                  ))
+                         )))
+
+
+##Ready continent dummies
+Q$Q2 <- casefold(Q$Q2, upper = TRUE)
+Q$Q2 <- str_trim(Q$Q2, side  = "right")
+Area <- ifelse(Q$Q2 == "HONG KONG", "Asia",
+        ifelse(Q$Q2 == "ENGLAND", "Europe",
+        ifelse(Q$Q2 == "MALAYSIA", "Asia",
+        ifelse(Q$Q2 == "TAIWAN", "Asia",
+        ifelse(Q$Q2 == "GREECE", "Europe",
+        ifelse(Q$Q2 == "CHILE", "Other",
+        ifelse(Q$Q2 == "MALAWI", "Other",
+        ifelse(Q$Q2 == "INDIA", "Asia",
+        ifelse(Q$Q2 == "LIBYA", "Other",
+        ifelse(Q$Q2 == "CHINA", "Asia",
+        ifelse(Q$Q2 == "NIGERIA", "Other",
+        ifelse(Q$Q2 == "TURKEY", "Europe",
+        ifelse(Q$Q2 == "SPAIN", "Europe",
+        ifelse(Q$Q2 == "ZIMBABWE", "Other",
+        ifelse(Q$Q2 == "SINGAPORE", "Asia",
+        ifelse(Q$Q2 == "GHANA", "Other",
+        ifelse(Q$Q2 == "DENMARK", "Europe",
+        ifelse(Q$Q2 == "GUATEMALA", "South America",
+        ifelse(Q$Q2 == "INDONESIA", "Asia",
+        ifelse(Q$Q2 == "JAPAN", "Asia",
+        ifelse(Q$Q2 == "UNITED KINGDOM", "Europe",
+        ifelse(Q$Q2 == "MOLDOVA", "Europe",
+        ifelse(Q$Q2 == "ROMANIA", "Europe",
+        ifelse(Q$Q2 == "WALES", "Europe",
+        ifelse(Q$Q2 == "GERMANY", "Europe",
+        ifelse(Q$Q2 == "SYRIA", "Asia",
+        ifelse(Q$Q2 == "KAZAKHSTAN" , "Asia",
+        ifelse(Q$Q2 == "HUNGARY", "Europe",
+        ifelse(Q$Q2 == "SCOTLAND", "Europe",
+        ifelse(Q$Q2 == "IRAN", "Asia",
+        ifelse(Q$Q2 == "SRI LANKA", "Asia",
+        ifelse(Q$Q2 == "LITHUANIA", "Europe",
+        ifelse(Q$Q2 == "PORTUGAL", "Europe",
+        ifelse(Q$Q2 == "CZECH REPUBLIC", "Europe", 
+        ifelse(Q$Q2 == "CANADA", "Other", 
+        ifelse(Q$Q2 == "RUSSIA", "Asia", 
+        ifelse(Q$Q2 == "MANY" , "Other",
+        ifelse(Q$Q2 == "PAKISTAN", "Asia", NA))))))))))))))))))))))))))))))))))))))
+
+
+Data <- 
+  FullData %>% 
+  mutate(Study = rep(Studies, each = 72),
+                      Continent = rep(Area, each = 72),
+                      Age = as.numeric(as.character(FullData$Age)),
+                      Report = as.numeric(Report)) %>%
+  filter(Honourcode == 0) %>%
+  select(-Honourcode)# We have to exclude these
+rm(Studies, Area)
+
+write_csv(Data, "./data/data_corruption-exp1.csv")
+
+
+## Creating a column for the first player's reports.
+Data <-
+  Data %>% 
+  arrange(group, round, team, subject)
+FirstMoverData <-
+  Data %>%
+  filter(Condition == "Collaborative", PlayerNo == "First Mover")
+SecondMoverData <- 
+Data %>%
+  filter(Condition == "Collaborative", PlayerNo == "Second Mover") %>%
+  mutate(ReportFirstMover = as.numeric(FirstMoverData$Report))
+```
+

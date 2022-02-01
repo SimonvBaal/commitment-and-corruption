@@ -1,0 +1,742 @@
+---
+title: "CorruptionExperiment1"
+author: "Simon van Baal"
+date: "15/07/2020"
+output: html_document
+---
+
+```{r initialisation}
+library(afex)
+library(lme4)
+library(emmeans)
+```
+
+
+###### Part 4: Analysis
+```{r, echo = F}
+SecondMoverData <-
+  SecondMoverData %>%
+  mutate(
+    zcReportFirstMover = ReportFirstMover - mean(ReportFirstMover, na.rm = TRUE),
+    Effort = factor(
+      ifelse(HighEffort == 1, "High Effort", "Low Effort"),
+      levels = c("Low Effort", "High Effort")
+    ),
+    Partnership = factor(
+      ifelse(LongPartnership == 1, "Long Partnership", "Short Partnership"),
+      levels = c("Short Partnership", "Long Partnership")
+    )
+  )
+
+FirstMoverData <-
+  FirstMoverData %>%
+  mutate(Effort = factor(
+    ifelse(HighEffort == 1, "High Effort", "Low Effort"),
+    levels = c("Low Effort", "High Effort")
+  ),
+  Partnership = factor(
+    ifelse(LongPartnership == 1, "Long Partnership", "Short Partnership"),
+    levels = c("Short Partnership", "Long Partnership")
+  ))
+
+AggregateData <-
+SecondMoverData %>%
+  group_by(Partnership, Effort, ID.number) %>%
+  summarise(Double = mean(Double)*36)
+wilcox.test(Double ~ Effort, AggregateData)
+
+## Now estimating models with the Afex package
+afexDouble <- 
+  mixed(Double ~
+          Partnership*Effort +
+          zcReportFirstMover +
+          Order +
+          (Partnership + Effort + zcReportFirstMover|ID.number), 
+        data = SecondMoverData,
+        family = binomial, method = 'LRT')
+nice(afexDouble)
+
+pairEffortDouble <-
+  pairs(
+    emmeans(afexDouble, "Effort"),
+    type = 'response',
+    adjust = 'fdr',
+    reverse = T
+  )
+pairPartnershipDouble <-
+  pairs(
+    emmeans(afexDouble, "Partnership", type = 'response'),
+    adjust = 'fdr',
+    reverse = T
+  )
+pairInteractionDouble <-
+  pairs(
+    emmeans(
+      afexDouble,
+      specs = "Effort",
+      by = "Partnership",
+      type = 'response'
+    ),
+    reverse = TRUE,
+    adjust = 'fdr'
+  )
+
+pairEffortDouble
+confint(pairEffortDouble, adjust = 'none')
+
+pairPartnershipDouble
+confint(pairPartnershipDouble, adjust = 'none')
+
+pairInteractionDouble
+confint(pairInteractionDouble, adjust = 'none')
+
+#============================= Report analysis
+lmmReport <- mixed(Report ~
+                     Partnership*Effort +
+                     Order +
+                     (Partnership + Effort|ID.number), 
+                   data = FirstMoverData)
+summary(lmmReport)
+
+pairEffortReport <-
+  pairs(emmeans(lmmReport, 'Effort'), adjust = 'fdr')
+pairEffortPartnershipReport <-
+  pairs(emmeans(lmmReport, 'Effort', by = 'Partnership'), adjust = 'fdr')
+tableEffortReport <-
+  FirstMoverData %>%
+  group_by(Effort) %>%
+  summarise(mean = round(mean(Report, na.rm = T), 2),
+            sd = round(sd(Report, na.rm = T), 2))
+
+tableEffortReport
+pairEffortReport
+
+#########################
+
+PreIndividual <-
+  Data %>% 
+  group_by(ID.number) %>% 
+  filter(Condition == "Pre-Collaborative") %>% 
+  summarise(Report = mean(Report))
+
+PostIndividual <-
+  Data %>%
+  group_by(ID.number) %>%
+  filter(Condition == "Post-Collaborative") %>%
+  summarise(Report = mean(Report))
+
+Data %>%
+  filter(Condition != "Collaborative") %>%
+  group_by(Condition) %>%
+  summarise(median = median(Report),
+            sd = sd(Report))
+
+wsrIndividual <- wilcox.test(PreIndividual$Report, PostIndividual$Report, paired = TRUE)
+wsrIndividual
+cor.test(PreIndividual$Report, PostIndividual$Report)
+
+## Individual v Collaborative
+
+CollaborativeReports <-
+  Data %>% 
+    filter(Condition == "Collaborative", PlayerNo == "First Mover") %>% 
+    group_by(ID.number) %>%
+    summarise(Report = mean(Report))
+
+IndividualReports <-            
+  Data %>%
+    filter(Condition != "Collaborative", PlayerNo == "First Mover") %>%
+    group_by(ID.number) %>%
+    summarise(Report = mean(Report))
+
+Data %>% 
+    filter(Condition != "Collaborative", PlayerNo == "First Mover") %>% 
+    summarise(meanReport = median(Report),
+              sdReport = sd(Report))
+
+wsrCollaborativeIndividual <-
+  wilcox.test(IndividualReports$Report, CollaborativeReports$Report, paired = TRUE)
+cor.test(IndividualReports$Report, CollaborativeReports$Report)
+
+```
+
+
+
+```{r Figures}
+#################################### Part 5: Figures
+
+# The palette with black:
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+## Plot dimensions
+w = 6
+h = 4
+
+
+Data <-
+  Data %>% 
+  mutate(Phase = ifelse(Condition == "Collaborative", "Collaborative", "Individual"),
+         Condition = factor(ifelse(Condition == "Pre-Collaborative", "Pre-Test",
+                            ifelse(Condition == "Post-Collaborative", "Post-Test", Condition)), levels = c("Collaborative", "Pre-Test", "Post-Test")))
+
+IndividualReportPlot <- 
+  ggplot(Data %>% filter(Condition != "Collaborative")) +
+  aes(x = Report, fill = Condition) +
+  geom_density(alpha = 0.4) +
+  geom_hline(aes(yintercept = .167), linetype = "dashed") +
+  scale_fill_manual(values = cbbPalette) +
+  labs(x = "Die-roll Report", y = "Density") +
+  scale_x_continuous(breaks = seq(1:6)) +
+  theme_light()
+
+
+FirstMoverReportPlot <- 
+  ggplot(Data %>% filter(PlayerNo == "First Mover")) +
+  aes(x = Report, fill = Phase) +
+  geom_density(alpha = .4) +
+  geom_hline(aes(yintercept = .167), linetype = "dashed") +
+  scale_fill_manual(values = cbbPalette[6:7]) +
+  labs(x = "Die-roll Report", y = " ") +
+  theme_light() +
+  scale_x_continuous(breaks = seq(1:6))
+
+a <- 
+  ggarrange(IndividualReportPlot, FirstMoverReportPlot, legend = "bottom") +
+  ggsave("ReportPlots1.png", height = 1.1*h, width = 1.5*w)
+a
+
+
+barPlotFirstMoverData <-
+  FirstMoverData %>% group_by(Effort, Partnership) %>% summarise(n = n()) %>%
+  ungroup() %>%
+  mutate(
+    Role = rep("First Mover"),
+    Condition = factor(
+      ifelse(
+        Effort == "High Effort" &
+          Partnership == "Long Partnership",
+        "High Ef., Long Part.",
+        ifelse(
+          Effort == "Low Effort" &
+            Partnership == "Long Partnership",
+          "Low Ef., Long Part.",
+          ifelse(
+            Effort == "High Effort",
+            "High Ef., Short Part.",
+            "Low Ef., Short Part."
+          )
+        )
+      ),
+      levels = c(
+        "Low Ef., Short Part.",
+        "Low Ef., Long Part.",
+        "High Ef., Short Part.",
+        "High Ef., Long Part."
+      )
+    ),
+    means = ifelse(
+      Condition == "Low Ef., Short Part.",
+      4.50,
+      ifelse(
+        Condition == "Low Ef., Long Part.",
+        4.43,
+        ifelse(Condition == "High Ef., Short Part.", 4.56, 4.51)
+      )
+    ),
+    se = ifelse(
+      Condition == "Low Ef., Short Part.",
+      .145,
+      ifelse(
+        Condition == "Low Ef., Long Part.",
+        .141,
+        ifelse(Condition == "High Ef., Short Part.", .145, .137)
+      )
+    )
+  )
+barPlotSecondMoverData <-
+  SecondMoverData %>% group_by(Effort, Partnership) %>% summarise(n = n()) %>%
+  ungroup() %>%
+  mutate(
+    Role = rep("Second Mover"),
+    Condition = factor(
+      ifelse(
+        Effort == "High Effort" &
+          Partnership == "Long Partnership",
+        "High Ef., Long Part.",
+        ifelse(
+          Effort == "Low Effort" &
+            Partnership == "Long Partnership",
+          "Low Ef., Long Part.",
+          ifelse(
+            Effort == "High Effort",
+            "High Ef., Short Part.",
+            "Low Ef., Short Part."
+          )
+        )
+      ),
+      levels = c(
+        "Low Ef., Short Part.",
+        "Low Ef., Long Part.",
+        "High Ef., Short Part.",
+        "High Ef., Long Part."
+      )
+    ),
+    means = ifelse(
+      Condition == "Low Ef., Short Part.",
+      .472,
+      ifelse(
+        Condition == "Low Ef., Long Part.",
+        .547,
+        ifelse(Condition == "High Ef., Short Part.", .623, .541)
+      )
+    ),
+    se = ifelse(
+      Condition == "Low Ef., Short Part.",
+      .0874,
+      ifelse(
+        Condition == "Low Ef., Long Part.",
+        .0724,
+        ifelse(Condition == "High Ef., Short Part.", .0909, .0799)
+      )
+    )
+  )
+barPlotData <-
+  rbind(barPlotFirstMoverData, barPlotSecondMoverData) %>%
+  mutate(
+    ConditionNumeric = as.numeric(Condition),
+    means = ifelse(Role == "Second Mover", means * 6, means),
+    se = ifelse(Role == "Second Mover", se * 6, se)
+  )
+
+
+reportBarPlot <- 
+  ggplot(barPlotFirstMoverData, aes(x = Condition, y = means, fill = Condition)) +
+  geom_bar(stat = "Identity", width = .6, position = position_dodge(),
+           alpha = .8) +
+  geom_errorbar(aes(x = Condition, ymin = means - se, y = means,
+                    ymax = means + se),
+                width = .3) +
+  lims(y = c(0,6)) +
+  labs(y = "Report magnitude") +
+  scale_fill_viridis_d() +
+  theme_light()
+
+doubleBarPlot <- 
+  ggplot(barPlotSecondMoverData, aes(x = Condition, y = means, fill = Condition)) +
+  geom_bar(stat = "Identity", width = .6, position = position_dodge(),
+           alpha = .8) +
+  geom_errorbar(aes(x = Condition, ymin = means - se, y = means,
+                    ymax = means + se),
+                width = .3) +
+  lims(y = c(0,1)) +
+  labs(y = "Probability of a double") +
+  scale_fill_viridis_d() +
+  theme_light()
+
+barPlots <- 
+  ggarrange(reportBarPlot, doubleBarPlot, legend = "bottom", common.legend = TRUE) +
+  ggsave("BarPlots.png", height = 1.1*h, width = 1.8*w)
+
+num = 6
+ggplot(barPlotData %>%
+         filter(Role == "First Mover"), aes(x = Condition)) +
+  geom_bar(aes(x = ConditionNumeric - .15, y=means, fill = Role), 
+           stat = "identity", position = position_dodge(), alpha = .8,
+           width = .3) +
+  geom_errorbar(data = barPlotData %>%
+                  filter(Role == "First Mover"), 
+                aes(x = ConditionNumeric - .15, ymin = means-se, y = means, ymax = means+se),
+                width = .1) +
+  geom_bar(data = barPlotData %>%
+             filter(Role == "Second Mover"), 
+           aes(x = ConditionNumeric + .15, y=means, fill = Role), alpha = .8, 
+           stat = "identity", width = .3) +
+  geom_errorbar(data = barPlotData %>%
+                  filter(Role == "Second Mover"),
+                aes(x = ConditionNumeric +.15, ymin = means-se, y = means, ymax = means+se),
+                width = .1) +
+  scale_y_continuous(limits = c(0,6),
+    # Features of the first axis
+    name = "Report Magnitude",
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.*(1/num), name="Proption of trials that are doubles")
+  ) +
+  scale_x_continuous(breaks = c(1,2,3,4), labels=c("High Ef., Short Part.", "Low Ef., Long Part. ", "High Ef., Short Part.", "High Ef., Long Part.")
+                   ) +
+  theme_light()
+
+## Comparison of interactions
+lmmReport <- mixed(
+  Report ~
+    Partnership * Effort +
+    Order +
+    (Partnership + Effort | ID.number),
+  data = FirstMoverData %>% mutate(
+    Partnership = ifelse(Partnership == "Long Partnership", "Long", "Short")
+  )
+)
+
+afexDouble <- 
+  mixed(Double ~
+          Partnership*Effort +
+          zcReportFirstMover +
+          Order +
+          (Partnership + Effort + zcReportFirstMover|ID.number), 
+        data = SecondMoverData %>% 
+          mutate(Partnership = ifelse(Partnership == "Long Partnership", "Long", "Short")),
+        family = binomial, 
+        method = 'LRT')
+
+
+plotEmmeans <- emmeans(afexDouble, ~ Effort | Partnership, type = "response")
+plotEmmeansReport <- emmeans(lmmReport, 'Effort', by ='Partnership')
+reportInteractionPlot <-
+  plot(plotEmmeansReport,
+     comparison = T, CIs = FALSE,
+         horizontal = T
+     ) +
+  labs(x = "Report magnitude",
+       y = "Condition") +
+  scale_x_continuous(limits = c(1,6), breaks = c(1,2,3,4,5,6)) +
+  theme_light()
+
+doubleInteractionPlot <- 
+  plot(plotEmmeans,
+     comparison = T, CIs = FALSE,
+     horizontal = T
+     ) +
+  lims(x = c(0,1)) +
+  labs(x = "Probability of a double",
+       y = "Condition") +
+  theme_light()
+
+InteractionPlots <-
+  ggarrange(reportInteractionPlot, doubleInteractionPlot,
+            nrow = 2) +
+  ggsave("InteractionPlotsExp1.png",
+         height = 1.4*h, width = 1.6*w)
+
+InteractionPlots
+```
+
+
+```{r plots Continued, echo = F}
+## Creating a scatterplot of the reports by player 1 and player 2.
+
+## Create a scatterplot for the expected behaviour in case of honesty
+Random.1 <- sample(1:6, 1548, replace = TRUE)
+Random.2 <- sample(1:6, 1548, replace = TRUE)
+Random <- data.frame(Random.1, Random.2)
+colnames(Random) <- c("Player.1", "Player.2")
+rm(Random.1)
+rm(Random.2)
+
+plot.random <- ggplot(Random, 
+       aes(Player.1, 
+           Player.2)) +
+  geom_point(size = 1, 
+             shape = 1, 
+             color = "blue",
+             position = position_jitter(width = 0.45, height = 0.45)) + 
+  scale_x_continuous(breaks = c(1,2,3,4,5,6)) +
+  scale_y_continuous(breaks = c(1,2,3,4,5,6)) +
+  coord_fixed(xlim = c(0.75, 6.25), ylim = c(0.75, 6.25)) +
+  theme_bw(base_size = 8) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black", size = 0.1)) +
+  labs(title = "Expected",
+       x = "First Mover", 
+       y = "Second Mover") +
+  geom_hline(yintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+  geom_vline(xintercept = c(1.5, 2.5, 3.5, 4.5, 5.5))
+
+plot.all <- 
+  ggplot(SecondMoverData, 
+       aes(ReportFirstMover, 
+           Report)) +
+  geom_point(size = 1, 
+             shape = 1, 
+             color = "blue",
+             position = position_jitter(width = 0.45, height = 0.45)) + 
+  scale_x_continuous(breaks = c(1,2,3,4,5,6)) +
+  scale_y_continuous(breaks = c(1,2,3,4,5,6)) +
+  coord_fixed(xlim = c(0.75, 6.25), ylim = c(0.75, 6.25)) +
+  theme_bw(base_size = 8) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black", size = 0.1)) +
+  labs(title = "Experimental",
+       x = "First Mover", 
+       y = " ") +
+  geom_hline(yintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+  geom_vline(xintercept = c(1.5, 2.5, 3.5, 4.5, 5.5))
+
+b <- 
+  ggarrange(plot.random, plot.all) +
+  ggsave("DotPlotExpected.png", width = 1.5*w, h = 1.1*h)
+
+###### New W&S plot
+
+DotPlotsExp1 <- 
+  ggplot(SecondMoverData, 
+       aes(ReportFirstMover, 
+           Report)) +
+           geom_point(size = 1.2, 
+                      shape = 1, 
+                      color = "blue",
+                      position = position_jitter(width = 0.45, height = 0.45)) + 
+       scale_x_continuous(breaks = c(1,2,3,4,5,6)) +
+       scale_y_continuous(breaks = c(1,2,3,4,5,6)) +
+       coord_fixed(xlim = c(0.75, 6.25), ylim = c(0.75, 6.25)) +
+       theme_bw(base_size = 8) + 
+       theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+             panel.grid.major = element_blank(),
+             panel.grid.minor = element_blank(),
+             axis.line = element_line(colour = "black", size = 0.1)) +
+       labs(title = "Partnership by Effort",
+            x = "First Mover's reports", 
+            y = "Second Mover's reports") +
+       geom_hline(yintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+       geom_vline(xintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+  facet_grid(Effort ~ Partnership) +
+  ggsave("DotPlots1.png")
+DotPlotsExp1
+```
+
+```{r Plots Cont'd #2}
+
+## Dataframes for the conditions
+
+HE.Partner  <- Matched.Response[Matched.Response$part=="Partner (HE)", ]
+HE.Stranger <- Matched.Response[Matched.Response$part=="Stranger (HE)",]
+LE.Partner  <- Matched.Response[Matched.Response$part=="Partner (LE)", ]
+LE.Stranger <- Matched.Response[Matched.Response$part=="Stranger (LE)",]
+## Scatterplot for Partner*High Effort
+
+plot.HEP <- ggplot(HE.Partner, 
+       aes(Response.P1, 
+           Response.P2)) +
+  geom_point(size = 1, 
+             shape = 1, 
+             color = "blue",
+             position = position_jitter(width = 0.38, height = 0.38)) + 
+  scale_x_continuous(breaks = c(1,2,3,4,5,6)) +
+  scale_y_continuous(breaks = c(1,2,3,4,5,6)) +
+  coord_fixed(xlim = c(0.75, 6.25), ylim = c(0.75, 6.25)) +
+  theme_bw(base_size = 8) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black", size = 0.1)) +
+  labs(title = "High Effort & Partner",
+       x = "Player 1", 
+       y = "Player 2") +
+ # geom_smooth(method = "glm", 
+  #            color = "darkorange", 
+   #           span = 2, 
+    #          level = 0.95) +
+  geom_hline(yintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+  geom_vline(xintercept = c(1.5, 2.5, 3.5, 4.5, 5.5))
+
+## Scatterplot for Partner*Low Effort
+
+plot.LEP <- ggplot(LE.Partner, 
+       aes(Response.P1, 
+           Response.P2)) +
+  geom_point(size = 1, 
+             shape = 1, 
+             color = "blue",
+             position = position_jitter(width = 0.38, height = 0.38)) + 
+  scale_x_continuous(breaks = c(1,2,3,4,5,6)) +
+  scale_y_continuous(breaks = c(1,2,3,4,5,6)) +
+  coord_fixed(xlim = c(0.75, 6.25), ylim = c(0.75, 6.25)) +
+  theme_bw(base_size = 8) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black", size = 0.1)) +
+  labs(title = "Low Effort & Partner",
+       x = "Player 1", 
+       y = "Player 2") +
+  geom_hline(yintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+  geom_vline(xintercept = c(1.5, 2.5, 3.5, 4.5, 5.5))
+
+## Scatterplot for Stranger*High Effort
+
+plot.HES <- ggplot(HE.Stranger, 
+       aes(Response.P1, 
+           Response.P2)) +
+  geom_point(size = 1, 
+             shape = 1, 
+             color = "blue",
+             position = position_jitter(width = 0.38, height = 0.38)) + 
+  scale_x_continuous(breaks = c(1,2,3,4,5,6)) +
+  scale_y_continuous(breaks = c(1,2,3,4,5,6)) +
+  coord_fixed(xlim = c(0.75, 6.25), ylim = c(0.75, 6.25)) +
+  theme_bw(base_size = 8) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black", size = 0.1)) +
+  labs(title = "High Effort & Stranger",
+       x = "Player 1", 
+       y = "Player 2") +
+  geom_hline(yintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+  geom_vline(xintercept = c(1.5, 2.5, 3.5, 4.5, 5.5))
+
+## The Low Effort Stranger Condition
+
+plot.LES <- ggplot(LE.Stranger, 
+       aes(Response.P1, 
+           Response.P2)) +
+  geom_point(size = 1, 
+             shape = 1, 
+             color = "blue",
+             position = position_jitter(width = 0.38, height = 0.38)) + 
+  scale_x_continuous(breaks = c(1,2,3,4,5,6)) +
+  scale_y_continuous(breaks = c(1,2,3,4,5,6)) +
+  coord_fixed(xlim = c(0.75, 6.25), ylim = c(0.75, 6.25)) +
+  theme_bw(base_size = 8) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black", size = 0.1)) +
+  labs(title = "Low Effort & Stranger", 
+       x = "Player 1", 
+       y = "Player 2") +
+  geom_hline(yintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+  geom_vline(xintercept = c(1.5, 2.5, 3.5, 4.5, 5.5))
+
+Conditionplots <- grid.arrange(plot.HES, plot.HEP, plot.LES, plot.LEP, ncol = 2)
+Unifallplots <- grid.arrange(plot.all, plot.random, ncol = 2)
+#### 
+
+################################################################
+
+
+violin.prepost <- ggplot(Indiv, aes(part, Response)) +
+  geom_violin(scale = "area",
+              fill = "blue",
+              trim = FALSE,
+              bw = 0.5) +
+  theme_bw(base_size = 8) +
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(colour = "black", size = 0.1))
+
+
+## A visual comparison between honesty, pre collab, post collab.
+
+Pre <- Indiv[Indiv$part == "Pre Individual",]
+Post <- Indiv[Indiv$part == "Post Individual",]
+Pre <- Pre[c(8, 20)]
+Post <- Post[c(8, 20)]
+
+Expected <- data.frame(rep("Expected", 1548))
+Expected$Response <- rep(c(1,2,3,4,5,6), length.out = 1548)
+colnames(Expected) <- (c("part", "Response"))
+
+prepost <- rbind(Expected, Pre, Post)  
+
+prepost$part <- ifelse(prepost$part == "Pre Individual", "Pre Collaboration", 
+                       ifelse(prepost$part == "Post Individual", "Post Collaboration", "Expected"))  
+prepost$part <- factor(prepost$part, c("Expected", "Pre Collaboration", "Post Collaboration"))
+prepost$Response <- factor(prepost$Response, c("6", "5", "4", "3", "2", "1"))
+
+fill.prepost <- ggplot(prepost, aes(part, fill = Response)) +
+  geom_bar(position = "fill") +
+  scale_fill_brewer(palette = "Blues") +
+  xlab("Block") +
+  ylab("Cumulative Proportion") +
+  scale_y_continuous(breaks = c(0, 1/6, 2/6, 3/6, 4/6, 5/6, 1),
+                     labels = c(0, "1/6", "2/6", "3/6", "4/6", "5/6", "1")) +
+  guides(fill=guide_legend(title="Report")) +
+  theme_bw() +
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+       panel.grid.major = element_blank(),
+       panel.grid.minor = element_blank(),
+       axis.line = element_line(colour = "black", size = 0.1)
+       #,axis.text.y = element_blank()
+       )
+
+
+
+######## Visualisation for effects of length of relationship.
+
+
+trialeffects <- P2.Clb.nonudgedata
+trialeffects$round <- ifelse(trialeffects$round == 1 |trialeffects$round == 10 |trialeffects$round == 19 |trialeffects$round == 28, 1,
+                      ifelse(trialeffects$round == 2 |trialeffects$round == 11 |trialeffects$round == 20 |trialeffects$round == 29, 2,
+                      ifelse(trialeffects$round == 3 |trialeffects$round == 12 |trialeffects$round == 21 |trialeffects$round == 30, 3,
+                      ifelse(trialeffects$round == 4 |trialeffects$round == 13 |trialeffects$round == 22 |trialeffects$round == 31, 4,
+                      ifelse(trialeffects$round == 5 |trialeffects$round == 14 |trialeffects$round == 23 |trialeffects$round == 24, 5,
+                      ifelse(trialeffects$round == 6 |trialeffects$round == 15 |trialeffects$round == 24 |trialeffects$round == 33, 6,
+                      ifelse(trialeffects$round == 7 |trialeffects$round == 16 |trialeffects$round == 25 |trialeffects$round == 34, 7,
+                      ifelse(trialeffects$round == 8 |trialeffects$round == 17 |trialeffects$round == 26 |trialeffects$round == 35, 8,
+                      ifelse(trialeffects$round == 9 |trialeffects$round == 18 |trialeffects$round == 27 |trialeffects$round == 36, 9, NA )))))))))
+
+
+trialeffects.PS <- trialeffects
+trialeffects.PS$part <- ifelse(trialeffects.PS$part == "Partner (HE)" | trialeffects.PS$part == "Partner (LE)", "Partner",
+                               ifelse(trialeffects.PS$part == "Stranger (HE)" | trialeffects.PS$part == "Stranger (LE)", "Stranger", NA))
+trialeffects.Effort <- trialeffects
+trialeffects.Effort$part <- ifelse(trialeffects.Effort$part == "Partner (HE)" | trialeffects.Effort$part == "Stranger (HE)", "High Effort",
+                               ifelse(trialeffects.Effort$part == "Stranger (LE)" | trialeffects.Effort$part == "Partner (LE)", "Low Effort", NA))
+teff<- aggregate(trialeffects$Double, by = list(trialeffects$part, trialeffects$round), mean)
+teff2<- aggregate(trialeffects.PS$Double, by = list(trialeffects.PS$part, trialeffects.PS$round), mean)
+teff3<- aggregate(trialeffects.Effort$Double, by = list(trialeffects.Effort$part, trialeffects.Effort$round), mean)
+
+
+ggplot(teff, aes(Group.2, x, group = Group.1, color = Group.1 )) +
+  geom_smooth(method = lm) +
+  scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9))
+
+
+ggplot(teff2, aes(Group.2, x, group = Group.1, color = Group.1 )) +
+  geom_smooth(method = lm) +
+  scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9))
+
+ggplot(teff3, aes(Group.2, x, group = Group.1, color = Group.1 )) +
+  geom_smooth(method = lm) +
+  scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9))
+
+rm(trialeffects)
+rm(trialeffects.Effort)
+rm(trialeffects.PS)
+
+
+ggplot(FullData %>% 
+  filter(PlayerNo == "First Mover", !is.na(Report)) %>% 
+  mutate(Round = ifelse(round > 200, round - 200, 
+                        ifelse(round > 100, round - 100, round))) %>%
+  group_by(Condition, Round) %>% 
+  summarise(ReportMean = mean(as.numeric(Report), na.rm = T), 
+            se = sd(as.numeric(Report), na.rm = T)/n()),
+  aes(x = Round, y = ReportMean, colour = Condition)) +
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  scale_x_continuous(breaks = seq(0,36, 2)) +
+  labs(x = 'Round number', y = 'Report magnitude', col = 'Block') +
+  theme_light()
+
+
+#### 
+
+stargazer(LME.Double, 
+          type = "html", 
+          out = "LMM.Table.htm", 
+          ci = TRUE,
+          intercept.bottom = FALSE,
+          single.row = FALSE)
+
+####################################
+
+
+```
+
+
+
