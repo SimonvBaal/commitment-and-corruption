@@ -1,0 +1,293 @@
+---
+title: "CorruptionExp2"
+author: "Simon van Baal"
+date: "01/07/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+## libraries
+library(afex)
+library(emmeans)
+library(ids)
+library(kableExtra)
+library(ggpubr)
+```
+
+```{r Load Data, include=FALSE}
+RawData <- read_csv("./raw-data/raw-data_exp2_corruption.csv")
+```
+
+
+```{r Visualisation}
+# The palette with black:
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+## Plot dimensions
+w = 6
+h = 4
+
+
+plot.all <- ggplot(SecondMoverDataExp2, 
+       aes(FirstMoverReport, 
+           Report)) +
+           geom_point(size = 1, 
+                      shape = 1, 
+                      color = "blue",
+                      position = position_jitter(width = 0.45, height = 0.45)) + 
+       scale_x_continuous(breaks = c(1,2,3,4,5,6)) +
+       scale_y_continuous(breaks = c(1,2,3,4,5,6)) +
+       coord_fixed(xlim = c(0.75, 6.25), ylim = c(0.75, 6.25)) +
+       theme_bw(base_size = 8) + 
+       theme(panel.border = element_rect(colour = "black", fill=NA, size=1),
+             panel.grid.major = element_blank(),
+             panel.grid.minor = element_blank(),
+             axis.line = element_line(colour = "black", size = 0.1)) +
+       labs(title = "Reward structure by Effort",
+            x = "First Mover's reports", 
+            y = "Second Mover's reports") +
+       geom_hline(yintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+       geom_vline(xintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
+  facet_grid(Effort ~ Rewards)
+ggsave("./figures/dot-plot_exp2.png")
+
+densityPlotExp2 <- 
+  ggplot(FirstMoverDataExp2) +
+  aes(x = Report, fill = Rewards) +
+  geom_density(alpha = 0.4) +
+  labs(x = "Die-roll Report", y = "Density") +
+  scale_fill_manual(values = cbbPalette) +
+  theme_light() +
+  facet_grid( ~ Effort)
+ggsave("./figures/density-plot_exp2.png", width = w*1.5, height = 1.1*h)
+
+# Interaction plot
+Figdf2 <- SecondMoverDataExp2 %>% 
+  group_by(Effort, Rewards) %>% 
+  summarise(Doubles = mean(Double),
+  SE = sd(Double)/sqrt(nrow(SecondMoverDataExp2)/6)) %>%
+  ungroup() %>%
+  mutate(Rewards = factor(Rewards, levels = c("Joint", "SecondMover", "FirstMover")))
+
+DoublePlot <- ggplot(Figdf2) +
+  aes(x = Effort, y = Doubles, colour = Rewards) +
+  geom_line(aes(group = Rewards), size = 0.8, position = position_dodge(width = .1)) +
+  geom_point(aes(group = Rewards), size = 2, position = position_dodge(width = .1)) +
+  geom_errorbar(aes(ymin=Doubles-SE, ymax=Doubles+SE), width=.1, size = 0.8, position = position_dodge(width = .1)) +
+  guides(colour = guide_legend("Rewards")) +
+  scale_x_discrete(labels = c("High Effort", "Low Effort")) +
+  labs(x = "Effort Level", y = "Probability of reporting a double") +
+  theme_light() +
+  scale_color_manual(values = cbbPalette,
+                     labels = c("Joint Rewards", "Own Rewards", "Other Rewards"))
+ggsave("./figures/double-plot_exp2.png", width = w, height = 1.1*h)
+ DoublePlot
+ 
+Figdf3 <- 
+  FirstMoverDataExp2 %>% 
+  group_by(Effort, Rewards) %>%
+  summarise(Reports = mean(Report, na.rm = T),
+            SE = sd(Report, na.rm = T)/sqrt(nrow(FirstMoverDataExp2)/6)) %>%
+  ungroup() %>%
+  mutate(Rewards = factor(Rewards, levels = c("Joint", "FirstMover", "SecondMover")))
+
+ReportPlot <-
+  ggplot(Figdf3, aes(x = Effort, y = Reports, colour = Rewards)) +
+  geom_line(aes(group = Rewards),
+            size = 0.8,
+            position = position_dodge(width = .1)) +
+  geom_point(aes(group = Rewards),
+             size = 2,
+             position = position_dodge(width = .1)) +
+  geom_errorbar(
+    aes(ymin = Reports - SE, ymax = Reports + SE),
+    width = .1,
+    size = 0.8,
+    position = position_dodge(width = .1)
+  ) +
+  guides(colour = guide_legend("Rewards")) +
+  scale_x_discrete(labels = c("High Effort", "Low Effort")) +
+  labs(x = "Effort Level", y = "Report magnitude") +
+  theme_light() +
+  scale_color_manual(
+    values = cbbPalette,
+    labels = c("Joint Rewards", "Own Rewards", "Other Rewards")
+  ) +
+  ggsave("./figures/report-plot_exp2.png", width = w, height = 1.1 * h)
+ReportPlot
+
+```
+
+
+```{r Doubles Analysis}
+#Center first mover reports over zero for GLMM.
+SecondMoverDataExp2 <- 
+  SecondMoverDataExp2 %>% 
+  mutate(zcFirstMoverReport = FirstMoverReport-mean(FirstMoverReport, na.rm = TRUE)) %>%
+  droplevels()
+
+
+DoubleGLMMExp2 <- mixed(Double ~ Effort*Rewards + zcFirstMoverReport + (Effort+Rewards+zcFirstMoverReport|ParticipantId),
+                  family = binomial(link = "logit"),
+                  method = "LRT",
+                  data = SecondMoverDataExp2)
+summary(DoubleGLMMExp2)
+
+DoubleEffortEmm <- 
+  emmeans(DoubleGLMMExp2, specs = "Effort", type = "response")
+
+RewardEmm <- 
+  emmeans(DoubleGLMMExp2, specs = "Rewards", type = "response")
+
+RewardPairs <- 
+  pairs(DoubleEmm, adjust = "fdr")
+
+RewardPairs2 <- 
+  pairs(DoubleEmm, adjust = "fdr", reverse = T)
+
+RewardTable <-
+  SecondMoverDataExp2 %>% 
+  group_by(Rewards) %>% 
+  summarise(Mean = round(mean(Double) * 18, 2), 
+            St.dev = round(sd(Double) * 18, 2))
+
+confint(RewardPairs2, adjust = 'none')
+
+# Effort null finding OR
+confint(pairs(emmeans(DoubleGLMMExp2, 'Effort'), 
+              adjust = 'mvt', 
+              type = 'response'))
+```
+
+```{r First mover report analysis}
+# Relevel Rewards factor
+FirstMoverDataExp2 <-
+  FirstMoverDataExp2 %>%
+  mutate(Rewards = relevel(Rewards, ref = 3))
+
+# Run model
+ReportLMMExp2 <- mixed(Report ~ Effort*Rewards + (Effort+Rewards|ParticipantId),
+                   data = FirstMoverDataExp2)
+summary(ReportLMMExp2)
+
+ReportEffortEmm <- 
+  pairs(emmeans(ReportLMMExp2, specs = "Effort"))
+
+ReportRewardsEmm <- 
+  emmeans(ReportLMMExp2, specs = "Rewards")
+
+ReportRewardsPairs <- 
+  pairs(ReportRewardsEmm, adjust = "fdr")
+
+ReportRewardTable <- 
+  FirstMoverDataExp2 %>% 
+  group_by(Rewards) %>% 
+  summarise(mean = round(mean(Report, na.rm = T), 2), 
+            SD = round(sd(Report, na.rm = T), 2))
+ReportRewardTable
+ReportRewardsPairs
+
+
+# Effort null finding mean SD
+FirstMoverDataExp2 %>% 
+  group_by(Effort) %>% 
+  summarise(mean = round(mean(Report, na.rm = T), 2), 
+            SD = round(sd(Report, na.rm = T), 2))
+
+# Report Interaction
+ReportInteractionEmm <- 
+  emmeans(ReportLMMExp2, "Effort", "Rewards")
+ReportInteractionPairs <- 
+  pairs(ReportInteractionEmm, adjust = 'fdr')
+ReportInteractionTable <- 
+  FirstMoverDataExp2 %>% 
+  group_by(Rewards, Effort) %>% 
+  summarise(mean = round(mean(Report, na.rm = T), 2), 
+            SD = round(sd(Report, na.rm = T), 2))
+
+ReportInteractionPairs
+confint(ReportInteractionPairs, adjust = 'none')
+ReportInteractionTable
+
+#===================================================== WSR test
+
+testdf <-
+  FirstMoverDataExp2 %>% 
+  filter(Rewards == "SecondMover") %>% 
+  select(Report)
+wilcox.test(x = as.numeric(testdf$Report),
+            alternative = "greater",
+            mu = 3.5)
+
+
+```
+
+```{r Interaction plots Exp2}
+
+ReportLMMExp2Plot <-
+  mixed(
+    Report ~ Effort * Rewards +
+      (Effort + Rewards | ParticipantId),
+    data = FirstMoverDataExp2 %>%
+      mutate(
+        Effort = ifelse(Effort == "HighEffort", "High", "Low"),
+        Rewards = ifelse(
+          Rewards == "FirstMover",
+          "Own Rewards",
+          ifelse(Rewards == "SecondMover", "Partner Rewards", "Joint Rewards")
+        )
+      )
+  )
+
+
+DoubleGLMMExp2Plot <-
+  mixed(
+    Double ~ Effort * Rewards + zcFirstMoverReport + (Effort + Rewards + zcFirstMoverReport |
+                                                        ParticipantId),
+    family = binomial(link = "logit"),
+    method = "LRT",
+    data = SecondMoverDataExp2 %>%
+      mutate(
+        Effort = ifelse(Effort == "HighEffort", "High", "Low"),
+        Rewards = ifelse(
+          Rewards == "FirstMover",
+          "Partner Rewards",
+          ifelse(Rewards == "SecondMover", "Own Rewards", "Joint Rewards")
+        )
+      )
+  )
+
+ReportInteractionEmm <-
+  emmeans(ReportLMMExp2Plot, specs = "Rewards", by = "Effort")
+DoubleInteractionEmm <-
+  emmeans(DoubleGLMMExp2Plot, "Rewards", by = "Effort", type = "response")
+
+
+reportInteractionPlotExp2 <-
+  plot(ReportInteractionEmm,
+       comparison = T, CIs = FALSE,) +
+  labs(x = "Report magnitude",
+       y = "Condition") +
+  scale_x_continuous(limits = c(1, 6), breaks = c(1, 2, 3, 4, 5, 6)) +
+  theme_light()
+
+doubleInteractionPlotExp2 <-
+  plot(DoubleInteractionEmm,
+       comparison = T, CIs = FALSE,) +
+  lims(x = c(0, 1)) +
+  labs(x = "Probability of a double",
+       y = "Condition") +
+  theme_light()
+
+InteractionPlotsExp2 <-
+  ggarrange(reportInteractionPlotExp2, doubleInteractionPlotExp2,
+            nrow = 2)
+ggsave(
+  "./figures/interaction-plots_Exp2.png",
+  height = h * 1,
+  width = w * 1.3
+)
+
+
+
+```

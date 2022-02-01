@@ -88,10 +88,17 @@ CorrIndividual <- CorrIndividual %>%
                 -label,
                 -response)
 
+```
+
+
+```{r Renaming and removing}
+
+# Correcting faulty responses for IDs
 CorrIndividual$Report[CorrIndividual$Report == "2271g"] <- "22719"
 CorrIndividual$Report[CorrIndividual$Report == "22458" & CorrIndividual$group == 19] <- "22689"
 CorrIndividual$Report[CorrIndividual$Report == "7"] <- "22323"
 CorrIndividual$Report[CorrIndividual$Report == "1791535"] <- "22456"
+
 
 ## Deleting pilot, test, and error groups
 CorrCollaborative <- CorrCollaborative[(CorrCollaborative$group == 17 | CorrCollaborative$group == 18 |
@@ -121,6 +128,12 @@ CorrIndividual$round <- as.character(CorrIndividual$round)
 CorrIndividual <- 
   CorrIndividual %>% filter(Report != "b" & Report != "d") %>%
   mutate(Report = as.numeric(Report))
+
+
+```
+
+
+```{r IDs}
 
 ## Now let's create a dataframe that contains the subject ids, linking them to group number
 ## and subject number, for the sake of clarity.
@@ -204,6 +217,10 @@ Q <- Q[idmatch,]
 rm(Ids)
 rm(idmatch)
 
+```
+
+
+```{r Incorporating the Questionnaire}
 
 ##### Part 3: Incorporation of Questionnaire
 
