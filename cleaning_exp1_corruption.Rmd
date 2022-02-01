@@ -11,7 +11,8 @@ library(tidyverse)
 
 
 ```{r Loading data}
-Q <- read.csv("./raw-data/raw-data_questionnaire_exp1_corruption.csv", stringsAsFactors = FALSE)
+Q <- read.csv("./raw-data/raw-data_questionnaire_exp1_corruption.csv", 
+              stringsAsFactors = FALSE)
 
 # These are the collaborative rounds
 CorrCollaborative <-
@@ -95,27 +96,44 @@ CorrIndividual <- CorrIndividual %>%
 
 # Correcting faulty responses for IDs
 CorrIndividual$Report[CorrIndividual$Report == "2271g"] <- "22719"
-CorrIndividual$Report[CorrIndividual$Report == "22458" & CorrIndividual$group == 19] <- "22689"
+CorrIndividual$Report[CorrIndividual$Report == "22458" &
+                        CorrIndividual$group == 19] <- "22689"
 CorrIndividual$Report[CorrIndividual$Report == "7"] <- "22323"
 CorrIndividual$Report[CorrIndividual$Report == "1791535"] <- "22456"
 
 
 ## Deleting pilot, test, and error groups
-CorrCollaborative <- CorrCollaborative[(CorrCollaborative$group == 17 | CorrCollaborative$group == 18 |
-                         CorrCollaborative$group == 19 | CorrCollaborative$group == 20 |
-                         CorrCollaborative$group == 33 | CorrCollaborative$group == 35 |
-                         CorrCollaborative$group == 37 | CorrCollaborative$group == 39 |
-                         CorrCollaborative$group == 41 | CorrCollaborative$group == 44 |
-                         CorrCollaborative$group == 46 | CorrCollaborative$group == 47 |
-                         CorrCollaborative$group == 49),]
+CorrCollaborative <-
+  CorrCollaborative[(
+    CorrCollaborative$group == 17 | CorrCollaborative$group == 18 |
+      CorrCollaborative$group == 19 |
+      CorrCollaborative$group == 20 |
+      CorrCollaborative$group == 33 |
+      CorrCollaborative$group == 35 |
+      CorrCollaborative$group == 37 |
+      CorrCollaborative$group == 39 |
+      CorrCollaborative$group == 41 |
+      CorrCollaborative$group == 44 |
+      CorrCollaborative$group == 46 |
+      CorrCollaborative$group == 47 |
+      CorrCollaborative$group == 49
+  ), ]
 
-CorrIndividual <- CorrIndividual[(CorrIndividual$group == 17 | CorrIndividual$group == 18 |
-                          CorrIndividual$group == 19 | CorrIndividual$group == 20 |
-                          CorrIndividual$group == 33 | CorrIndividual$group == 35 |
-                          CorrIndividual$group == 37 | CorrIndividual$group == 39 |
-                          CorrIndividual$group == 41 | CorrIndividual$group == 44 |
-                          CorrIndividual$group == 46 | CorrIndividual$group == 47 |
-                          CorrIndividual$group == 49),]
+CorrIndividual <-
+  CorrIndividual[(
+    CorrIndividual$group == 17 | CorrIndividual$group == 18 |
+      CorrIndividual$group == 19 |
+      CorrIndividual$group == 20 |
+      CorrIndividual$group == 33 |
+      CorrIndividual$group == 35 |
+      CorrIndividual$group == 37 |
+      CorrIndividual$group == 39 |
+      CorrIndividual$group == 41 |
+      CorrIndividual$group == 44 |
+      CorrIndividual$group == 46 |
+      CorrIndividual$group == 47 |
+      CorrIndividual$group == 49
+  ), ]
 
 CorrIndividual$RT <- as.character(CorrIndividual$RT)
 ## Trimming excess characters
@@ -167,50 +185,102 @@ rm(CorrCollaborative)
 FullData <- merge(FullData, Ids, all.x = TRUE)
 
 ##Assigning a player role to each observation
-FullData$PlayerNo <- ifelse(FullData$subject == 1, "First Mover" , 
-                            ifelse(FullData$subject == 3, "First Mover",
-                                   ifelse(FullData$subject == 5, "First Mover", 
-                                          ifelse(FullData$subject == 7, "First Mover",
-                                                 ifelse(FullData$subject == 9, "First Mover",
-                                                        ifelse(FullData$subject == 11, "First Mover", "Second Mover"))))))
+FullData$PlayerNo <- ifelse(
+  FullData$subject == 1,
+  "First Mover" ,
+  ifelse(
+    FullData$subject == 3,
+    "First Mover",
+    ifelse(
+      FullData$subject == 5,
+      "First Mover",
+      ifelse(
+        FullData$subject == 7,
+        "First Mover",
+        ifelse(
+          FullData$subject == 9,
+          "First Mover",
+          ifelse(FullData$subject == 11, "First Mover", "Second Mover")
+        )
+      )
+    )
+  )
+)
 
 FullData$round <- as.numeric(FullData$round)
 #labelling the parts
-FullData$Condition <- ifelse(FullData$round >= 300, "Practice",
-                             ifelse(FullData$round >= 200, "Post-Collaborative",
-                                    ifelse(FullData$round >= 100, "Pre-Collaborative",
-                                           ifelse(FullData$round >= 0, "Collaborative", NA))))
+FullData$Condition <- ifelse(
+  FullData$round >= 300,
+  "Practice",
+  ifelse(
+    FullData$round >= 200,
+    "Post-Collaborative",
+    ifelse(
+      FullData$round >= 100,
+      "Pre-Collaborative",
+      ifelse(FullData$round >= 0, "Collaborative", NA)
+    )
+  )
+)
 
 ##Discard practice trials
-FullData <- FullData[!(FullData$Condition == "Practice"), ]
+FullData <- FullData[!(FullData$Condition == "Practice"),]
 
-FullData$HighEffort <- ifelse(FullData$round <= 9, 0, 
-                             ifelse(FullData$round <= 18, 1,
-                                    ifelse(FullData$round <= 27, 0,
-                                           ifelse(FullData$round <= 36, 1, NA))))
+FullData$HighEffort <- ifelse(FullData$round <= 9, 0,
+                              ifelse(FullData$round <= 18, 1,
+                                     ifelse(
+                                       FullData$round <= 27, 0,
+                                       ifelse(FullData$round <= 36, 1, NA)
+                                     )))
 FullData$LowEffort <- ifelse(FullData$round <= 9, 1,
                              ifelse(FullData$round <= 18, 0,
-                                    ifelse(FullData$round <= 27, 1,
-                                           ifelse(FullData$round <= 36, 0, NA))))
+                                    ifelse(
+                                      FullData$round <= 27, 1,
+                                      ifelse(FullData$round <= 36, 0, NA)
+                                    )))
 
-FullData$Order <- ifelse(FullData$group == 17 | FullData$group == 18 |
-                             FullData$group == 20 | FullData$group == 35 | 
-                             FullData$group == 39 | FullData$group == 47 | 
-                             FullData$group == 49, "Mirror", "Regular")
-FullData$Honourcode <- ifelse(FullData$group == 37 | FullData$group == 39,
-                               1, 0)
+FullData$Order <-
+  ifelse(
+    FullData$group == 17 | FullData$group == 18 |
+      FullData$group == 20 |
+      FullData$group == 35 |
+      FullData$group == 39 |
+      FullData$group == 47 |
+      FullData$group == 49,
+    "Mirror",
+    "Regular"
+  )
+FullData$Honourcode <-
+  ifelse(FullData$group == 37 | FullData$group == 39,
+         1, 0)
 
-FullData$ShortPartnership <- ifelse(FullData$round <= 18  & FullData$Order == "Regular", 1,
-                             ifelse(FullData$round > 18  & FullData$Order == "Mirror", 1, 0))
+FullData$ShortPartnership <-
+  ifelse(
+    FullData$round <= 18  & FullData$Order == "Regular",
+    1,
+    ifelse(FullData$round > 18  &
+             FullData$Order == "Mirror", 1, 0)
+  )
 
-FullData$LongPartnership <- ifelse(FullData$round > 18  & FullData$Order == "Regular", 1,
-                            ifelse(FullData$round <= 18  & FullData$Order == "Mirror", 1, 0))
+FullData$LongPartnership <-
+  ifelse(
+    FullData$round > 18  & FullData$Order == "Regular",
+    1,
+    ifelse(FullData$round <= 18  &
+             FullData$Order == "Mirror", 1, 0)
+  )
 
 ##Find the doubles
-FullData$Double <- ifelse(FullData$Condition == "Collaborative", duplicated(FullData[c(1,4,5,7)]) | 
-                             duplicated(FullData[c(1,4,5,7)], fromLast = TRUE), NA) 
-FullData$Double <- ifelse(FullData$Double == TRUE, 1, 
-                           ifelse(FullData$Double == FALSE, 0, NA))
+FullData$Double <-
+  ifelse(
+    FullData$Condition == "Collaborative",
+    duplicated(FullData[c(1, 4, 5, 7)]) |
+      duplicated(FullData[c(1, 4, 5, 7)], fromLast = TRUE),
+    NA
+  )
+FullData$Double <- ifelse(FullData$Double == TRUE,
+                          1,
+                          ifelse(FullData$Double == FALSE, 0, NA))
 
 idmatch <- match(Ids$ID.number, Q$id)
 Q <- Q[idmatch,] 
@@ -233,17 +303,101 @@ rm(idmatch)
 Q <- Q[ order(match(Q$id, FullData$ID.number)), ]
 
 ## Create dataframes for psychological traits
-H.Hexaco <- data.frame(Q$id, Q$Q37, Q$Q61, Q$Q85, Q$Q43, Q$Q67, Q$Q91, Q$Q49, Q$Q73, Q$Q55, Q$Q79, stringsAsFactors = FALSE)
+H.Hexaco <-
+  data.frame(
+    Q$id,
+    Q$Q37,
+    Q$Q61,
+    Q$Q85,
+    Q$Q43,
+    Q$Q67,
+    Q$Q91,
+    Q$Q49,
+    Q$Q73,
+    Q$Q55,
+    Q$Q79,
+    stringsAsFactors = FALSE
+  )
 H.Hexaco <- data.matrix(H.Hexaco)
-E.Hexaco <- data.frame(Q$id, Q$Q36, Q$Q60, Q$Q84, Q$Q42, Q$Q66, Q$Q48, Q$Q72, Q$Q54, Q$Q78, Q$Q90, stringsAsFactors = FALSE)
+E.Hexaco <-
+  data.frame(
+    Q$id,
+    Q$Q36,
+    Q$Q60,
+    Q$Q84,
+    Q$Q42,
+    Q$Q66,
+    Q$Q48,
+    Q$Q72,
+    Q$Q54,
+    Q$Q78,
+    Q$Q90,
+    stringsAsFactors = FALSE
+  )
 E.Hexaco <- data.matrix(E.Hexaco)
-X.Hexaco <- data.frame(Q$id, Q$Q35, Q$Q59, Q$Q83, Q$Q41, Q$Q65, Q$Q89, Q$Q47, Q$Q71, Q$Q53, Q$Q77, stringsAsFactors = FALSE)
+X.Hexaco <-
+  data.frame(
+    Q$id,
+    Q$Q35,
+    Q$Q59,
+    Q$Q83,
+    Q$Q41,
+    Q$Q65,
+    Q$Q89,
+    Q$Q47,
+    Q$Q71,
+    Q$Q53,
+    Q$Q77,
+    stringsAsFactors = FALSE
+  )
 X.Hexaco <- data.matrix(X.Hexaco)
-A.Hexaco <- data.frame(Q$id, Q$Q34, Q$Q58, Q$Q40, Q$Q64, Q$Q82, Q$Q46, Q$Q70, Q$Q88, Q$Q52, Q$Q76, stringsAsFactors = FALSE)
+A.Hexaco <-
+  data.frame(
+    Q$id,
+    Q$Q34,
+    Q$Q58,
+    Q$Q40,
+    Q$Q64,
+    Q$Q82,
+    Q$Q46,
+    Q$Q70,
+    Q$Q88,
+    Q$Q52,
+    Q$Q76,
+    stringsAsFactors = FALSE
+  )
 A.Hexaco <- data.matrix(A.Hexaco)
-C.Hexaco <- data.frame(Q$id, Q$Q33, Q$Q57, Q$Q39, Q$Q63, Q$Q45, Q$Q69, Q$Q81, Q$Q51, Q$Q75, Q$Q87, stringsAsFactors = FALSE)
+C.Hexaco <-
+  data.frame(
+    Q$id,
+    Q$Q33,
+    Q$Q57,
+    Q$Q39,
+    Q$Q63,
+    Q$Q45,
+    Q$Q69,
+    Q$Q81,
+    Q$Q51,
+    Q$Q75,
+    Q$Q87,
+    stringsAsFactors = FALSE
+  )
 C.Hexaco <- data.matrix(C.Hexaco)
-O.Hexaco <- data.frame(Q$id, Q$Q32, Q$Q56, Q$Q38, Q$Q62, Q$Q44, Q$Q68, Q$Q80, Q$Q50, Q$Q74, Q$Q86, stringsAsFactors = FALSE)
+O.Hexaco <-
+  data.frame(
+    Q$id,
+    Q$Q32,
+    Q$Q56,
+    Q$Q38,
+    Q$Q62,
+    Q$Q44,
+    Q$Q68,
+    Q$Q80,
+    Q$Q50,
+    Q$Q74,
+    Q$Q86,
+    stringsAsFactors = FALSE
+  )
 O.Hexaco <- data.matrix(O.Hexaco)
 
 ## Create mean scores for psychological traits
@@ -281,7 +435,23 @@ rm(C.Hexaco1)
 rm(O.Hexaco1)
 ## Ready Social Mindfulness for incorporation.
 
-SoMi <- data.frame(Q$id, Q$Q8, Q$Q9, Q$Q10, Q$Q11, Q$Q12, Q$Q13, Q$Q14, Q$Q15, Q$Q16, Q$Q17, Q$Q18, Q$Q19, stringsAsFactors = FALSE)
+SoMi <-
+  data.frame(
+    Q$id,
+    Q$Q8,
+    Q$Q9,
+    Q$Q10,
+    Q$Q11,
+    Q$Q12,
+    Q$Q13,
+    Q$Q14,
+    Q$Q15,
+    Q$Q16,
+    Q$Q17,
+    Q$Q18,
+    Q$Q19,
+    stringsAsFactors = FALSE
+  )
 SoMi <- data.matrix(SoMi)
 SoMi1 <- rowMeans(SoMi [, -1])
 FullData$SoMi <- rep(SoMi1, each = 72)

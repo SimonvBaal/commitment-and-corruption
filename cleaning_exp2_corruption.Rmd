@@ -8,6 +8,7 @@ output: html_document
 
 ```{r setup}
 library(tidyverse)
+library(ids)
 ```
 
 ```{r Data Cleaning, include=FALSE}
@@ -188,13 +189,19 @@ DataExp2 <-
     0
   )) %>%
   arrange(Session, SessionSubject) %>%
-  mutate(ParticipantId = factor(rep(adjective_animal(108, max_len = 5), each = 54))) %>%
+  mutate(ParticipantId = 
+           factor(rep(adjective_animal(108, max_len = 5), 
+                      each = 54))) %>%
   arrange(Session, RoundNo, Team, MoverNo)
 
 write_csv(DataExp2, "./data/data_corruption-exp2.csv")
 
-FirstMoverDataExp2 <- DataExp2 %>% filter(MoverNo == 1)
-SecondMoverDataExp2 <- DataExp2 %>% filter(MoverNo == 2) %>%
+FirstMoverDataExp2 <- 
+  DataExp2 %>% filter(MoverNo == 1)
+
+SecondMoverDataExp2 <- 
+  DataExp2 %>% 
+  filter(MoverNo == 2) %>%
   mutate(FirstMoverReport = FirstMoverDataExp2$Report)
 
 ```

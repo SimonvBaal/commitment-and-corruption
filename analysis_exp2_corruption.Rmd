@@ -9,7 +9,6 @@ output: html_document
 ## libraries
 library(afex)
 library(emmeans)
-library(ids)
 library(kableExtra)
 library(ggpubr)
 ```
@@ -21,7 +20,11 @@ RawData <- read_csv("./raw-data/raw-data_exp2_corruption.csv")
 
 ```{r Visualisation}
 # The palette with black:
-cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+cbbPalette <- 
+  c("#000000", "#E69F00", 
+    "#56B4E9", "#009E73", 
+    "#F0E442", "#0072B2", 
+    "#D55E00", "#CC79A7")
 
 ## Plot dimensions
 w = 6

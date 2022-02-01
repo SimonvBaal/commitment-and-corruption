@@ -166,18 +166,37 @@ cor.test(IndividualReports$Report, CollaborativeReports$Report)
 #################################### Part 5: Figures
 
 # The palette with black:
-cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+cbbPalette <-
+  c(
+    "#000000",
+    "#E69F00",
+    "#56B4E9",
+    "#009E73",
+    "#F0E442",
+    "#0072B2",
+    "#D55E00",
+    "#CC79A7"
+  )
 
 ## Plot dimensions
 w = 6
 h = 4
 
 
+
 Data <-
-  Data %>% 
-  mutate(Phase = ifelse(Condition == "Collaborative", "Collaborative", "Individual"),
-         Condition = factor(ifelse(Condition == "Pre-Collaborative", "Pre-Test",
-                            ifelse(Condition == "Post-Collaborative", "Post-Test", Condition)), levels = c("Collaborative", "Pre-Test", "Post-Test")))
+  Data %>%
+  mutate(
+    Phase = ifelse(Condition == "Collaborative", "Collaborative", "Individual"),
+    Condition = factor(
+      ifelse(
+        Condition == "Pre-Collaborative",
+        "Pre-Test",
+        ifelse(Condition == "Post-Collaborative", "Post-Test", Condition)
+      ),
+      levels = c("Collaborative", "Pre-Test", "Post-Test")
+    )
+  )
 
 IndividualReportPlot <- 
   ggplot(Data %>% filter(Condition != "Collaborative")) +
@@ -340,28 +359,58 @@ barPlots <-
 num = 6
 ggplot(barPlotData %>%
          filter(Role == "First Mover"), aes(x = Condition)) +
-  geom_bar(aes(x = ConditionNumeric - .15, y=means, fill = Role), 
-           stat = "identity", position = position_dodge(), alpha = .8,
-           width = .3) +
-  geom_errorbar(data = barPlotData %>%
-                  filter(Role == "First Mover"), 
-                aes(x = ConditionNumeric - .15, ymin = means-se, y = means, ymax = means+se),
-                width = .1) +
-  geom_bar(data = barPlotData %>%
-             filter(Role == "Second Mover"), 
-           aes(x = ConditionNumeric + .15, y=means, fill = Role), alpha = .8, 
-           stat = "identity", width = .3) +
-  geom_errorbar(data = barPlotData %>%
-                  filter(Role == "Second Mover"),
-                aes(x = ConditionNumeric +.15, ymin = means-se, y = means, ymax = means+se),
-                width = .1) +
-  scale_y_continuous(limits = c(0,6),
+  geom_bar(
+    aes(x = ConditionNumeric - .15, y = means, fill = Role),
+    stat = "identity",
+    position = position_dodge(),
+    alpha = .8,
+    width = .3
+  ) +
+  geom_errorbar(
+    data = barPlotData %>%
+      filter(Role == "First Mover"),
+    aes(
+      x = ConditionNumeric - .15,
+      ymin = means - se,
+      y = means,
+      ymax = means + se
+    ),
+    width = .1
+  ) +
+  geom_bar(
+    data = barPlotData %>%
+      filter(Role == "Second Mover"),
+    aes(x = ConditionNumeric + .15, y = means, fill = Role),
+    alpha = .8,
+    stat = "identity",
+    width = .3
+  ) +
+  geom_errorbar(
+    data = barPlotData %>%
+      filter(Role == "Second Mover"),
+    aes(
+      x = ConditionNumeric + .15,
+      ymin = means - se,
+      y = means,
+      ymax = means + se
+    ),
+    width = .1
+  ) +
+  scale_y_continuous(
+    limits = c(0, 6),
     # Features of the first axis
     name = "Report Magnitude",
     # Add a second axis and specify its features
-    sec.axis = sec_axis(~.*(1/num), name="Proption of trials that are doubles")
+    sec.axis = sec_axis( ~ . * (1 / num), name = "Proption of trials that are doubles")
   ) +
-  scale_x_continuous(breaks = c(1,2,3,4), labels=c("High Ef., Short Part.", "Low Ef., Long Part. ", "High Ef., Short Part.", "High Ef., Long Part.")
+  scale_x_continuous(
+    breaks = c(1, 2, 3, 4),
+    labels = c(
+      "High Ef., Short Part.",
+      "Low Ef., Long Part. ",
+      "High Ef., Short Part.",
+      "High Ef., Long Part."
+    )
                    ) +
   theme_light()
 
@@ -669,26 +718,104 @@ fill.prepost <- ggplot(prepost, aes(part, fill = Response)) +
 
 
 trialeffects <- P2.Clb.nonudgedata
-trialeffects$round <- ifelse(trialeffects$round == 1 |trialeffects$round == 10 |trialeffects$round == 19 |trialeffects$round == 28, 1,
-                      ifelse(trialeffects$round == 2 |trialeffects$round == 11 |trialeffects$round == 20 |trialeffects$round == 29, 2,
-                      ifelse(trialeffects$round == 3 |trialeffects$round == 12 |trialeffects$round == 21 |trialeffects$round == 30, 3,
-                      ifelse(trialeffects$round == 4 |trialeffects$round == 13 |trialeffects$round == 22 |trialeffects$round == 31, 4,
-                      ifelse(trialeffects$round == 5 |trialeffects$round == 14 |trialeffects$round == 23 |trialeffects$round == 24, 5,
-                      ifelse(trialeffects$round == 6 |trialeffects$round == 15 |trialeffects$round == 24 |trialeffects$round == 33, 6,
-                      ifelse(trialeffects$round == 7 |trialeffects$round == 16 |trialeffects$round == 25 |trialeffects$round == 34, 7,
-                      ifelse(trialeffects$round == 8 |trialeffects$round == 17 |trialeffects$round == 26 |trialeffects$round == 35, 8,
-                      ifelse(trialeffects$round == 9 |trialeffects$round == 18 |trialeffects$round == 27 |trialeffects$round == 36, 9, NA )))))))))
+trialeffects$round <-
+  ifelse(
+    trialeffects$round == 1 |
+      trialeffects$round == 10 |
+      trialeffects$round == 19 | trialeffects$round == 28,
+    1,
+    ifelse(
+      trialeffects$round == 2 |
+        trialeffects$round == 11 |
+        trialeffects$round == 20 | trialeffects$round == 29,
+      2,
+      ifelse(
+        trialeffects$round == 3 |
+          trialeffects$round == 12 |
+          trialeffects$round == 21 | trialeffects$round == 30,
+        3,
+        ifelse(
+          trialeffects$round == 4 |
+            trialeffects$round == 13 |
+            trialeffects$round == 22 | trialeffects$round == 31,
+          4,
+          ifelse(
+            trialeffects$round == 5 |
+              trialeffects$round == 14 |
+              trialeffects$round == 23 | trialeffects$round == 24,
+            5,
+            ifelse(
+              trialeffects$round == 6 |
+                trialeffects$round == 15 |
+                trialeffects$round == 24 | trialeffects$round == 33,
+              6,
+              ifelse(
+                trialeffects$round == 7 |
+                  trialeffects$round == 16 |
+                  trialeffects$round == 25 | trialeffects$round == 34,
+                7,
+                ifelse(
+                  trialeffects$round == 8 |
+                    trialeffects$round == 17 |
+                    trialeffects$round == 26 | trialeffects$round == 35,
+                  8,
+                  ifelse(
+                    trialeffects$round == 9 |
+                      trialeffects$round == 18 |
+                      trialeffects$round == 27 | trialeffects$round == 36,
+                    9,
+                    NA
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
 
 
 trialeffects.PS <- trialeffects
-trialeffects.PS$part <- ifelse(trialeffects.PS$part == "Partner (HE)" | trialeffects.PS$part == "Partner (LE)", "Partner",
-                               ifelse(trialeffects.PS$part == "Stranger (HE)" | trialeffects.PS$part == "Stranger (LE)", "Stranger", NA))
+trialeffects.PS$part <-
+  ifelse(
+    trialeffects.PS$part == "Partner (HE)" |
+      trialeffects.PS$part == "Partner (LE)",
+    "Partner",
+    ifelse(
+      trialeffects.PS$part == "Stranger (HE)" |
+        trialeffects.PS$part == "Stranger (LE)",
+      "Stranger",
+      NA
+    )
+  )
 trialeffects.Effort <- trialeffects
-trialeffects.Effort$part <- ifelse(trialeffects.Effort$part == "Partner (HE)" | trialeffects.Effort$part == "Stranger (HE)", "High Effort",
-                               ifelse(trialeffects.Effort$part == "Stranger (LE)" | trialeffects.Effort$part == "Partner (LE)", "Low Effort", NA))
-teff<- aggregate(trialeffects$Double, by = list(trialeffects$part, trialeffects$round), mean)
-teff2<- aggregate(trialeffects.PS$Double, by = list(trialeffects.PS$part, trialeffects.PS$round), mean)
-teff3<- aggregate(trialeffects.Effort$Double, by = list(trialeffects.Effort$part, trialeffects.Effort$round), mean)
+trialeffects.Effort$part <-
+  ifelse(
+    trialeffects.Effort$part == "Partner (HE)" |
+      trialeffects.Effort$part == "Stranger (HE)",
+    "High Effort",
+    ifelse(
+      trialeffects.Effort$part == "Stranger (LE)" |
+        trialeffects.Effort$part == "Partner (LE)",
+      "Low Effort",
+      NA
+    )
+  )
+teff <-
+  aggregate(trialeffects$Double,
+            by = list(trialeffects$part, trialeffects$round),
+            mean)
+teff2 <-
+  aggregate(trialeffects.PS$Double,
+            by = list(trialeffects.PS$part, trialeffects.PS$round),
+            mean)
+teff3 <-
+  aggregate(
+    trialeffects.Effort$Double,
+    by = list(trialeffects.Effort$part, trialeffects.Effort$round),
+    mean
+  )
 
 
 ggplot(teff, aes(Group.2, x, group = Group.1, color = Group.1 )) +
