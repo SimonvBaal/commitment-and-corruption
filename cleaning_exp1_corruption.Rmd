@@ -11,15 +11,19 @@ library(tidyverse)
 
 
 ```{r Loading data}
-Q <- read.csv("Questionnaire.csv", stringsAsFactors = FALSE)
+Q <- read.csv("./raw-data/raw-data_questionnaire_exp1_corruption.csv", stringsAsFactors = FALSE)
 
 # These are the collaborative rounds
-CorrCollaborative <- read.csv("Corruption_23.csv")
-CorrCollaborative2 <- read.csv("September23.csv")
+CorrCollaborative <-
+  read.csv("./raw-data/raw-data_collaborative_exp1_corruption.csv")
+CorrCollaborative2 <-
+  read.csv("./raw-data/raw-data_collaborative-fall_exp1_corruption.csv")
 
 ## Practice and individual rolls
-CorrIndividual <- read.csv("Corruption_14.csv")
-CorrIndividual2 <- read.csv("September14.csv")
+CorrIndividual <-
+  read.csv("./raw-data/raw-data_individual_exp1_corruption.csv")
+CorrIndividual2 <-
+  read.csv("./raw-data/raw-data_individual-fall_exp1_corruption.csv")
 
 ```
 
