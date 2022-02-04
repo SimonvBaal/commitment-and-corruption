@@ -6,16 +6,13 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-## libraries
+
 library(afex)
 library(emmeans)
 library(kableExtra)
 library(ggpubr)
 ```
 
-```{r Load Data, include=FALSE}
-RawData <- read_csv("./raw-data/raw-data_exp2_corruption.csv")
-```
 
 
 ```{r Visualisation}
@@ -53,72 +50,6 @@ plot.all <- ggplot(SecondMoverDataExp2,
        geom_vline(xintercept = c(1.5, 2.5, 3.5, 4.5, 5.5)) +
   facet_grid(Effort ~ Rewards)
 ggsave("./figures/dot-plot_exp2.png")
-
-densityPlotExp2 <- 
-  ggplot(FirstMoverDataExp2) +
-  aes(x = Report, fill = Rewards) +
-  geom_density(alpha = 0.4) +
-  labs(x = "Die-roll Report", y = "Density") +
-  scale_fill_manual(values = cbbPalette) +
-  theme_light() +
-  facet_grid( ~ Effort)
-ggsave("./figures/density-plot_exp2.png", width = w*1.5, height = 1.1*h)
-
-# Interaction plot
-Figdf2 <- SecondMoverDataExp2 %>% 
-  group_by(Effort, Rewards) %>% 
-  summarise(Doubles = mean(Double),
-  SE = sd(Double)/sqrt(nrow(SecondMoverDataExp2)/6)) %>%
-  ungroup() %>%
-  mutate(Rewards = factor(Rewards, levels = c("Joint", "SecondMover", "FirstMover")))
-
-DoublePlot <- ggplot(Figdf2) +
-  aes(x = Effort, y = Doubles, colour = Rewards) +
-  geom_line(aes(group = Rewards), size = 0.8, position = position_dodge(width = .1)) +
-  geom_point(aes(group = Rewards), size = 2, position = position_dodge(width = .1)) +
-  geom_errorbar(aes(ymin=Doubles-SE, ymax=Doubles+SE), width=.1, size = 0.8, position = position_dodge(width = .1)) +
-  guides(colour = guide_legend("Rewards")) +
-  scale_x_discrete(labels = c("High Effort", "Low Effort")) +
-  labs(x = "Effort Level", y = "Probability of reporting a double") +
-  theme_light() +
-  scale_color_manual(values = cbbPalette,
-                     labels = c("Joint Rewards", "Own Rewards", "Other Rewards"))
-ggsave("./figures/double-plot_exp2.png", width = w, height = 1.1*h)
- DoublePlot
- 
-Figdf3 <- 
-  FirstMoverDataExp2 %>% 
-  group_by(Effort, Rewards) %>%
-  summarise(Reports = mean(Report, na.rm = T),
-            SE = sd(Report, na.rm = T)/sqrt(nrow(FirstMoverDataExp2)/6)) %>%
-  ungroup() %>%
-  mutate(Rewards = factor(Rewards, levels = c("Joint", "FirstMover", "SecondMover")))
-
-ReportPlot <-
-  ggplot(Figdf3, aes(x = Effort, y = Reports, colour = Rewards)) +
-  geom_line(aes(group = Rewards),
-            size = 0.8,
-            position = position_dodge(width = .1)) +
-  geom_point(aes(group = Rewards),
-             size = 2,
-             position = position_dodge(width = .1)) +
-  geom_errorbar(
-    aes(ymin = Reports - SE, ymax = Reports + SE),
-    width = .1,
-    size = 0.8,
-    position = position_dodge(width = .1)
-  ) +
-  guides(colour = guide_legend("Rewards")) +
-  scale_x_discrete(labels = c("High Effort", "Low Effort")) +
-  labs(x = "Effort Level", y = "Report magnitude") +
-  theme_light() +
-  scale_color_manual(
-    values = cbbPalette,
-    labels = c("Joint Rewards", "Own Rewards", "Other Rewards")
-  ) +
-  ggsave("./figures/report-plot_exp2.png", width = w, height = 1.1 * h)
-ReportPlot
-
 ```
 
 
@@ -130,7 +61,10 @@ SecondMoverDataExp2 <-
   droplevels()
 
 
-DoubleGLMMExp2 <- mixed(Double ~ Effort*Rewards + zcFirstMoverReport + (Effort+Rewards+zcFirstMoverReport|ParticipantId),
+DoubleGLMMExp2 <- 
+  mixed(Double ~ Effort*Rewards + 
+          zcFirstMoverReport + 
+          (Effort+Rewards+zcFirstMoverReport|ParticipantId),
                   family = binomial(link = "logit"),
                   method = "LRT",
                   data = SecondMoverDataExp2)
@@ -187,8 +121,6 @@ ReportRewardTable <-
   group_by(Rewards) %>% 
   summarise(mean = round(mean(Report, na.rm = T), 2), 
             SD = round(sd(Report, na.rm = T), 2))
-ReportRewardTable
-ReportRewardsPairs
 
 
 # Effort null finding mean SD

@@ -11,95 +11,117 @@ library(tidyverse)
 library(ids)
 ```
 
+
+
+```{r Load Data, include=FALSE}
+RawData <- read_csv("./raw-data/raw-data_exp2_corruption.csv")
+```
+
+
+
 ```{r Data Cleaning, include=FALSE}
 # Delete sessions with issues.
-RawData <- RawData %>% group_by(Session) %>% 
-  filter(Session != 17 & Session != 18 & Session != 19 & Session != 66 & Session != 67) %>%
-  ungroup() %>% 
+RawData <- 
+  RawData %>% 
+  group_by(Session) %>% 
+  filter(Session != 17 &
+           Session != 18 & Session != 19 & Session != 66 & Session != 67) %>%
+  ungroup() %>%
   select(-Date)
 
-RawData <- RawData %>% add_row(Session = rep(11, each = 16), 
-                        SessionSubject = rep(c(9,12), each = 8), 
-                        Team = rep(5, each = 16),
-                        MoverNo = rep(c(1,2), each = 8),
-                        RoundNo = rep(47:54, times = 2),
-                        Report = rep(NA, times = 16),
-                        RT = rep(NA, times = 16))
-## Two subjects were unable to finish the entire experiment. The analysis should be able to handle this.
-#RawData %>% filter(Session == 11) %>% group_by(SessionSubject) %>% summarise(n=n())
+# Need to round out the dataset for easier manipulation.
+## Two subjects were unable to finish the entire experiment. The analysis is able to handle this.
 
+RawData <- 
+  RawData %>% 
+  add_row(
+  Session = rep(11, each = 16),
+  SessionSubject = rep(c(9, 12), each = 8),
+  Team = rep(5, each = 16),
+  MoverNo = rep(c(1, 2), each = 8),
+  RoundNo = rep(47:54, times = 2),
+  Report = rep(NA, times = 16),
+  RT = rep(NA, times = 16)
+)
+#RawData %>% filter(Session == 11) %>% group_by(SessionSubject) %>% summarise(n=n())
+```
+
+```{r Create relevant variables}
 # Create variables in raw data according to experimental procedure.
-RawData <- RawData %>% mutate(
-  Order = ifelse(Session == 11, 1,
-                 ifelse(
-                   Session == 12 | Session == 63,
-                   2,
+RawData <- RawData %>%
+  mutate(
+    Order = ifelse(Session == 11, 1,
                    ifelse(
-                     Session == 13 | Session == 65,
-                     3,
+                     Session == 12 | Session == 63,
+                     2,
                      ifelse(
-                       Session == 14 | Session == 68,
-                       4,
-                       ifelse(Session == 15 |
-                                Session == 71, 5, NA)
+                       Session == 13 | Session == 65,
+                       3,
+                       ifelse(
+                         Session == 14 | Session == 68,
+                         4,
+                         ifelse(Session == 15 |
+                                  Session == 71, 5, NA)
+                       )
                      )
-                   )
-                 )),
-  Block = ifelse(RoundNo <= 9, 1,
-                 ifelse(
-                   RoundNo <= 18, 2,
-                   ifelse(RoundNo <= 27, 3,
-                          ifelse(
-                            RoundNo <= 36, 4,
-                            ifelse(RoundNo <= 45, 5,
-                                   ifelse(RoundNo <= 54, 6, NA))
-                          ))
-                 )),
-  Rewards = factor(
-    ifelse(
-      Order == 1 & Block == 1 | Order == 1 & Block == 2,
-      "FirstMover",
-      ifelse(
-        Order == 1 & Block == 4 | Order == 1 & Block == 6,
-        "SecondMover",
-        ifelse(
-          Order == 1 & Block == 3 | Order == 1 & Block == 5,
-          "Joint",
-          ifelse(
-            Order == 2 & Block == 1 | Order == 2 & Block == 3,
-            "FirstMover",
-            ifelse(
-              Order == 2 & Block == 2 | Order == 2 & Block == 4,
-              "SecondMover",
-              ifelse(
-                Order == 2 & Block == 5 | Order == 2 & Block == 6,
-                "Joint",
-                ifelse(
-                  Order == 3 & Block == 3 | Order == 3 & Block == 5,
-                  "FirstMover",
-                  ifelse(
-                    Order == 3 & Block == 1 | Order == 3 & Block == 2,
-                    "SecondMover",
-                    ifelse(
-                      Order == 3 & Block == 4 | Order == 3 & Block == 6,
-                      "Joint",
-                      ifelse(
-                        Order == 4 & Block == 5 | Order == 4 & Block == 6,
-                        "FirstMover",
-                        ifelse(
-                          Order == 4 & Block == 1 | Order == 4 & Block == 3,
-                          "SecondMover",
-                          ifelse(
-                            Order == 4 & Block == 2 | Order == 4 & Block == 4,
-                            "Joint",
+                   )),
+    Block = ifelse(RoundNo <= 9, 1,
+                   ifelse(
+                     RoundNo <= 18, 2,
+                     ifelse(RoundNo <= 27, 3,
                             ifelse(
-                              Order == 5 & Block == 4 | Order == 5 & Block == 6,
-                              "FirstMover",
+                              RoundNo <= 36, 4,
+                              ifelse(RoundNo <= 45, 5,
+                                     ifelse(RoundNo <= 54, 6, NA))
+                            ))
+                   )),
+    Rewards = factor(
+      ifelse(
+        Order == 1 & Block == 1 | Order == 1 & Block == 2,
+        "FirstMover",
+        ifelse(
+          Order == 1 & Block == 4 | Order == 1 & Block == 6,
+          "SecondMover",
+          ifelse(
+            Order == 1 & Block == 3 | Order == 1 & Block == 5,
+            "Joint",
+            ifelse(
+              Order == 2 & Block == 1 | Order == 2 & Block == 3,
+              "FirstMover",
+              ifelse(
+                Order == 2 & Block == 2 | Order == 2 & Block == 4,
+                "SecondMover",
+                ifelse(
+                  Order == 2 & Block == 5 | Order == 2 & Block == 6,
+                  "Joint",
+                  ifelse(
+                    Order == 3 & Block == 3 | Order == 3 & Block == 5,
+                    "FirstMover",
+                    ifelse(
+                      Order == 3 & Block == 1 | Order == 3 & Block == 2,
+                      "SecondMover",
+                      ifelse(
+                        Order == 3 & Block == 4 | Order == 3 & Block == 6,
+                        "Joint",
+                        ifelse(
+                          Order == 4 & Block == 5 | Order == 4 & Block == 6,
+                          "FirstMover",
+                          ifelse(
+                            Order == 4 & Block == 1 | Order == 4 & Block == 3,
+                            "SecondMover",
+                            ifelse(
+                              Order == 4 & Block == 2 | Order == 4 & Block == 4,
+                              "Joint",
                               ifelse(
-                                Order == 5 & Block == 3 | Order == 5 & Block == 5,
-                                "SecondMover",
-                                ifelse(Order == 5 &
-                                         Block == 1 | Order == 5 & Block == 2, "Joint", NA)
+                                Order == 5 & Block == 4 | Order == 5 & Block == 6,
+                                "FirstMover",
+                                ifelse(
+                                  Order == 5 & Block == 3 | Order == 5 & Block == 5,
+                                  "SecondMover",
+                                  ifelse(Order == 5 &
+                                           Block == 1 |
+                                           Order == 5 & Block == 2, "Joint", NA)
+                                )
                               )
                             )
                           )
@@ -113,61 +135,64 @@ RawData <- RawData %>% mutate(
           )
         )
       )
-    )
-  ),
-  Effort = factor(
-    ifelse(
-      Order == 1 &
-        Block == 1 |
-        Order == 1 & Block == 4 | Order == 1 & Block == 5,
-      "LowEffort",
+    ),
+    Effort = factor(
       ifelse(
         Order == 1 &
-          Block == 2 |
-          Order == 1 & Block == 3 | Order == 1 & Block == 6,
-        "HighEffort",
+          Block == 1 |
+          Order == 1 & Block == 4 | Order == 1 & Block == 5,
+        "LowEffort",
         ifelse(
-          Order == 2 &
+          Order == 1 &
             Block == 2 |
-            Order == 2 & Block == 3 | Order == 2 & Block == 6,
-          "LowEffort",
+            Order == 1 & Block == 3 | Order == 1 & Block == 6,
+          "HighEffort",
           ifelse(
             Order == 2 &
-              Block == 1 |
-              Order == 2 & Block == 4 | Order == 2 & Block == 5,
-            "HighEffort",
+              Block == 2 |
+              Order == 2 & Block == 3 | Order == 2 & Block == 6,
+            "LowEffort",
             ifelse(
-              Order == 3 &
+              Order == 2 &
                 Block == 1 |
-                Order == 3 & Block == 4 | Order == 3 & Block == 5,
-              "LowEffort",
+                Order == 2 & Block == 4 | Order == 2 & Block == 5,
+              "HighEffort",
               ifelse(
                 Order == 3 &
-                  Block == 2 |
-                  Order == 3 & Block == 3 | Order == 3 & Block == 6,
-                "HighEffort",
+                  Block == 1 |
+                  Order == 3 & Block == 4 | Order == 3 & Block == 5,
+                "LowEffort",
                 ifelse(
-                  Order == 4 &
+                  Order == 3 &
                     Block == 2 |
-                    Order == 4 & Block == 3 | Order == 4 & Block == 6,
-                  "LowEffort",
+                    Order == 3 & Block == 3 | Order == 3 & Block == 6,
+                  "HighEffort",
                   ifelse(
                     Order == 4 &
-                      Block == 1 |
-                      Order == 4 & Block == 4 | Order == 4 & Block == 5,
-                    "HighEffort",
+                      Block == 2 |
+                      Order == 4 &
+                      Block == 3 | Order == 4 & Block == 6,
+                    "LowEffort",
                     ifelse(
-                      Order == 5 &
+                      Order == 4 &
                         Block == 1 |
-                        Order == 5 & Block == 4 | Order == 5 & Block == 5,
-                      "LowEffort",
+                        Order == 4 &
+                        Block == 4 | Order == 4 & Block == 5,
+                      "HighEffort",
                       ifelse(
                         Order == 5 &
-                          Block == 2 |
+                          Block == 1 |
                           Order == 5 &
-                          Block == 3 | Order == 5 & Block == 6,
-                        "HighEffort",
-                        NA
+                          Block == 4 | Order == 5 & Block == 5,
+                        "LowEffort",
+                        ifelse(
+                          Order == 5 &
+                            Block == 2 |
+                            Order == 5 &
+                            Block == 3 | Order == 5 & Block == 6,
+                          "HighEffort",
+                          NA
+                        )
                       )
                     )
                   )
@@ -179,10 +204,10 @@ RawData <- RawData %>% mutate(
       )
     )
   )
-) 
 
 DataExp2 <-
-  RawData %>% mutate(Double = ifelse(
+  RawData %>% 
+  mutate(Double = ifelse(
     duplicated(RawData[, c(1, 3, 5, 6)], fromLast = TRUE) |
       duplicated(RawData[, c(1, 3, 5, 6)]),
     1,
@@ -193,6 +218,10 @@ DataExp2 <-
            factor(rep(adjective_animal(108, max_len = 5), 
                       each = 54))) %>%
   arrange(Session, RoundNo, Team, MoverNo)
+
+```
+
+```{r finish up}
 
 write_csv(DataExp2, "./data/data_corruption-exp2.csv")
 
