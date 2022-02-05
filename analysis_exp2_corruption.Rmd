@@ -77,10 +77,10 @@ RewardEmm <-
   emmeans(DoubleGLMMExp2, specs = "Rewards", type = "response")
 
 RewardPairs <- 
-  pairs(DoubleEmm, adjust = "fdr")
+  pairs(RewardEmm, adjust = "fdr")
 
 RewardPairs2 <- 
-  pairs(DoubleEmm, adjust = "fdr", reverse = T)
+  pairs(RewardEmm, adjust = "fdr", reverse = T)
 
 RewardTable <-
   SecondMoverDataExp2 %>% 
@@ -177,8 +177,9 @@ ReportLMMExp2Plot <-
 
 DoubleGLMMExp2Plot <-
   mixed(
-    Double ~ Effort * Rewards + zcFirstMoverReport + (Effort + Rewards + zcFirstMoverReport |
-                                                        ParticipantId),
+    Double ~ Effort * Rewards + 
+      zcFirstMoverReport + 
+      (Effort + Rewards + zcFirstMoverReport|ParticipantId),
     family = binomial(link = "logit"),
     method = "LRT",
     data = SecondMoverDataExp2 %>%
@@ -197,6 +198,9 @@ ReportInteractionEmm <-
 DoubleInteractionEmm <-
   emmeans(DoubleGLMMExp2Plot, "Rewards", by = "Effort", type = "response")
 
+```
+
+```{r Plotting the models}
 
 reportInteractionPlotExp2 <-
   plot(ReportInteractionEmm,
@@ -218,11 +222,16 @@ InteractionPlotsExp2 <-
   ggarrange(reportInteractionPlotExp2, doubleInteractionPlotExp2,
             nrow = 2)
 ggsave(
-  "./figures/interaction-plots_Exp2.png",
+  "./figures/plots_interaction_exp2.png",
   height = h * 1,
   width = w * 1.3
 )
 
+```
+
+```{r save image}
+
+save.image()
 
 
 ```

@@ -10,6 +10,7 @@ library(afex)
 library(lme4)
 library(emmeans)
 library(ggpubr)
+library(stargazer)
 ```
 
 
