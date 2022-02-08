@@ -47,7 +47,7 @@ pairPartnershipDouble <-
   pairs(
     emmeans(afexDouble, "Partnership", type = 'response'),
     adjust = 'fdr',
-    reverse = T
+    reverse = F
   )
 pairInteractionDouble <-
   pairs(
@@ -61,12 +61,12 @@ pairInteractionDouble <-
     adjust = 'fdr'
   )
 
-# Confidence intervals can be called as follows:
-confint(pairEffortDouble)
-
-confint(pairPartnershipDouble)
-
-confint(pairInteractionDouble)
+# # Confidence intervals can be called as follows:
+# confint(pairEffortDouble)
+# 
+# confint(pairPartnershipDouble)
+# 
+# confint(pairInteractionDouble)
 
 ```
 
@@ -85,7 +85,7 @@ lmmReport <- mixed(Report ~
 summary(lmmReport)
 
 pairEffortReport <-
-  pairs(emmeans(lmmReport, 'Effort'), adjust = 'fdr')
+  pairs(emmeans(lmmReport, 'Effort'), adjust = 'fdr', reverse = T)
 pairEffortPartnershipReport <-
   pairs(emmeans(lmmReport, 'Effort', by = 'Partnership'), adjust = 'fdr')
 
@@ -95,8 +95,11 @@ tableEffortReport <-
   summarise(mean = round(mean(Report, na.rm = T), 2),
             sd = round(sd(Report, na.rm = T), 2))
 
-tableEffortReport
-pairEffortReport
+## Here's one for Partnership
+# FirstMoverData %>%
+#   group_by(Partnership) %>%
+#   summarise(mean = round(mean(Report, na.rm = T), 2),
+#             sd = round(sd(Report, na.rm = T), 2))
 
 
 ```
@@ -404,8 +407,10 @@ ggplot(barPlotData %>%
 
 ```{r Doubles analysis plots}
 
-plotEmmeans <- emmeans(afexDouble, ~ Effort | Partnership, type = "response")
-plotEmmeansReport <- emmeans(lmmReport, 'Effort', by ='Partnership')
+plotEmmeans <- 
+  emmeans(afexDouble, ~ Effort | Partnership, type = "response")
+plotEmmeansReport <- 
+  emmeans(lmmReport, 'Effort', by ='Partnership')
 reportInteractionPlot <-
   plot(plotEmmeansReport,
      comparison = T, CIs = FALSE,
@@ -414,7 +419,8 @@ reportInteractionPlot <-
   labs(x = "Report magnitude",
        y = "Condition") +
   scale_x_continuous(limits = c(1,6), breaks = c(1,2,3,4,5,6)) +
-  theme_light()
+  theme_light() +
+  geom_vline(xintercept = 3.5, col = "blue", linetype="dashed")
 
 doubleInteractionPlot <- 
   plot(plotEmmeans,
@@ -424,7 +430,8 @@ doubleInteractionPlot <-
   lims(x = c(0,1)) +
   labs(x = "Probability of a double",
        y = "Condition") +
-  theme_light()
+  theme_light() +
+  geom_vline(xintercept = 1/6, col = "blue", linetype="dashed")
 
 InteractionPlots <-
   ggarrange(reportInteractionPlot, doubleInteractionPlot,

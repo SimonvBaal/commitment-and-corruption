@@ -70,29 +70,29 @@ DoubleGLMMExp2 <-
                   data = SecondMoverDataExp2)
 summary(DoubleGLMMExp2)
 
-DoubleEffortEmm <- 
+DoubleEffortEmmExp2 <- 
   emmeans(DoubleGLMMExp2, specs = "Effort", type = "response")
 
-RewardEmm <- 
+DoubleRewardEmmExp2 <- 
   emmeans(DoubleGLMMExp2, specs = "Rewards", type = "response")
 
-RewardPairs <- 
+DoubleRewardPairsExp2 <- 
   pairs(RewardEmm, adjust = "fdr")
 
-RewardPairs2 <- 
+DoubleRewardPairsExp2_2 <- 
   pairs(RewardEmm, adjust = "fdr", reverse = T)
 
-RewardTable <-
+RewardTableExp2 <-
   SecondMoverDataExp2 %>% 
   group_by(Rewards) %>% 
   summarise(Mean = round(mean(Double) * 18, 2), 
             St.dev = round(sd(Double) * 18, 2))
 
-confint(RewardPairs2, adjust = 'none')
+confint(RewardPairsExp2_2, adjust = 'none')
 
 # Effort null finding OR
 confint(pairs(emmeans(DoubleGLMMExp2, 'Effort'), 
-              adjust = 'mvt', 
+              adjust = 'fdr', 
               type = 'response'))
 ```
 
@@ -103,20 +103,24 @@ FirstMoverDataExp2 <-
   mutate(Rewards = relevel(Rewards, ref = 3))
 
 # Run model
-ReportLMMExp2 <- mixed(Report ~ Effort*Rewards + (Effort+Rewards|ParticipantId),
-                   data = FirstMoverDataExp2)
+ReportLMMExp2 <-
+  mixed(Report ~
+          Effort * Rewards +
+          (Effort + Rewards | ParticipantId),
+        data = FirstMoverDataExp2)
 summary(ReportLMMExp2)
 
-ReportEffortEmm <- 
+ReportEffortEmmExp2 <- 
   pairs(emmeans(ReportLMMExp2, specs = "Effort"))
 
-ReportRewardsEmm <- 
+ReportRewardsEmmExp2 <- 
   emmeans(ReportLMMExp2, specs = "Rewards")
 
-ReportRewardsPairs <- 
-  pairs(ReportRewardsEmm, adjust = "fdr")
+ReportRewardsPairsExp2 <- 
+  pairs(ReportRewardsEmm, adjust = "fdr",
+        reverse = T)
 
-ReportRewardTable <- 
+ReportRewardTableExp2 <- 
   FirstMoverDataExp2 %>% 
   group_by(Rewards) %>% 
   summarise(mean = round(mean(Report, na.rm = T), 2), 
@@ -130,18 +134,18 @@ FirstMoverDataExp2 %>%
             SD = round(sd(Report, na.rm = T), 2))
 
 # Report Interaction
-ReportInteractionEmm <- 
+ReportInteractionEmmExp2 <- 
   emmeans(ReportLMMExp2, "Effort", "Rewards")
-ReportInteractionPairs <- 
+ReportInteractionPairsExp2 <- 
   pairs(ReportInteractionEmm, adjust = 'fdr')
-ReportInteractionTable <- 
+ReportInteractionTableExp2 <- 
   FirstMoverDataExp2 %>% 
   group_by(Rewards, Effort) %>% 
   summarise(mean = round(mean(Report, na.rm = T), 2), 
             SD = round(sd(Report, na.rm = T), 2))
 
 ReportInteractionPairs
-confint(ReportInteractionPairs, adjust = 'none')
+confint(ReportInteractionPairs, adjust = 'none') # otherwise it uses bonferroni
 ReportInteractionTable
 
 #===================================================== WSR test
