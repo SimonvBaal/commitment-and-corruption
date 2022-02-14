@@ -24,35 +24,37 @@ SecondMoverData %>%
 wilcox.test(Double ~ Effort, AggregateData)
 
 ## Now estimating models with the Afex package
-afexDouble <- 
+glmmDouble <- 
   mixed(Double ~
           Partnership*Effort +
           zcReportFirstMover +
           Order +
           (Partnership + Effort + zcReportFirstMover|ID.number), 
-        data = SecondMoverData %>% mutate(
+        data = 
+          SecondMoverData %>% 
+          mutate(
     Partnership = ifelse(Partnership == "Long Partnership", "Long", "Short")
   ),
         family = binomial, method = 'LRT')
-nice(afexDouble)
+nice(glmmDouble)
 
 pairEffortDouble <-
   pairs(
-    emmeans(afexDouble, "Effort"),
+    emmeans(glmmDouble, "Effort"),
     type = 'response',
     adjust = 'fdr',
     reverse = T
   )
 pairPartnershipDouble <-
   pairs(
-    emmeans(afexDouble, "Partnership", type = 'response'),
+    emmeans(glmmDouble, "Partnership", type = 'response'),
     adjust = 'fdr',
     reverse = F
   )
 pairInteractionDouble <-
   pairs(
     emmeans(
-      afexDouble,
+      glmmDouble,
       specs = "Effort",
       by = "Partnership",
       type = 'response'
@@ -86,6 +88,8 @@ summary(lmmReport)
 
 pairEffortReport <-
   pairs(emmeans(lmmReport, 'Effort'), adjust = 'fdr', reverse = T)
+pairPartnershipReport <-
+  pairs(emmeans(lmmReport, 'Partnership'), adjust = 'fdr')
 pairEffortPartnershipReport <-
   pairs(emmeans(lmmReport, 'Effort', by = 'Partnership'), adjust = 'fdr')
 
@@ -408,7 +412,7 @@ ggplot(barPlotData %>%
 ```{r Doubles analysis plots}
 
 plotEmmeans <- 
-  emmeans(afexDouble, ~ Effort | Partnership, type = "response")
+  emmeans(glmmDouble, ~ Effort | Partnership, type = "response")
 plotEmmeansReport <- 
   emmeans(lmmReport, 'Effort', by ='Partnership')
 reportInteractionPlot <-
@@ -556,7 +560,7 @@ ggplot(FullData %>%
 ```{r regression table}
 #### 
 
-stargazer(LME.Double, 
+stargazer(glmmDouble, 
           type = "html", 
           out = "LMM.Table.htm", 
           ci = TRUE,

@@ -61,20 +61,20 @@ SecondMoverDataExp2 <-
   droplevels()
 
 
-DoubleGLMMExp2 <- 
+glmmDoubleExp2 <- 
   mixed(Double ~ Effort*Rewards + 
           zcFirstMoverReport + 
           (Effort+Rewards+zcFirstMoverReport|ParticipantId),
                   family = binomial(link = "logit"),
                   method = "LRT",
                   data = SecondMoverDataExp2)
-summary(DoubleGLMMExp2)
+summary(glmmDoubleExp2)
 
 DoubleEffortEmmExp2 <- 
-  emmeans(DoubleGLMMExp2, specs = "Effort", type = "response")
+  emmeans(glmmDoubleExp2, specs = "Effort", type = "response")
 
 DoubleRewardEmmExp2 <- 
-  emmeans(DoubleGLMMExp2, specs = "Rewards", type = "response")
+  emmeans(glmmDoubleExp2, specs = "Rewards", type = "response")
 
 DoubleRewardPairsExp2 <- 
   pairs(RewardEmm, adjust = "fdr")
@@ -88,10 +88,10 @@ RewardTableExp2 <-
   summarise(Mean = round(mean(Double) * 18, 2), 
             St.dev = round(sd(Double) * 18, 2))
 
-confint(RewardPairsExp2_2, adjust = 'none')
+confint(DoubleRewardPairsExp2_2, adjust = 'none')
 
 # Effort null finding OR
-confint(pairs(emmeans(DoubleGLMMExp2, 'Effort'), 
+confint(pairs(emmeans(glmmDoubleExp2, 'Effort'), 
               adjust = 'fdr', 
               type = 'response'))
 ```
@@ -103,18 +103,18 @@ FirstMoverDataExp2 <-
   mutate(Rewards = relevel(Rewards, ref = 3))
 
 # Run model
-ReportLMMExp2 <-
+lmmReportExp2 <-
   mixed(Report ~
           Effort * Rewards +
           (Effort + Rewards | ParticipantId),
         data = FirstMoverDataExp2)
-summary(ReportLMMExp2)
+summary(lmmReportExp2)
 
 ReportEffortEmmExp2 <- 
-  pairs(emmeans(ReportLMMExp2, specs = "Effort"))
+  pairs(emmeans(lmmReportExp2, specs = "Effort"))
 
 ReportRewardsEmmExp2 <- 
-  emmeans(ReportLMMExp2, specs = "Rewards")
+  emmeans(lmmReportExp2, specs = "Rewards")
 
 ReportRewardsPairsExp2 <- 
   pairs(ReportRewardsEmm, adjust = "fdr",
@@ -135,7 +135,7 @@ FirstMoverDataExp2 %>%
 
 # Report Interaction
 ReportInteractionEmmExp2 <- 
-  emmeans(ReportLMMExp2, "Effort", "Rewards")
+  emmeans(lmmReportExp2, "Effort", "Rewards")
 ReportInteractionPairsExp2 <- 
   pairs(ReportInteractionEmm, adjust = 'fdr')
 ReportInteractionTableExp2 <- 
@@ -163,7 +163,7 @@ wilcox.test(x = as.numeric(testdf$Report),
 
 ```{r Interaction plots Exp2}
 
-ReportLMMExp2Plot <-
+lmmReportExp2Plot <-
   mixed(
     Report ~ Effort * Rewards +
       (Effort + Rewards | ParticipantId),
@@ -179,7 +179,7 @@ ReportLMMExp2Plot <-
   )
 
 
-DoubleGLMMExp2Plot <-
+glmmDoubleExp2Plot <-
   mixed(
     Double ~ Effort * Rewards + 
       zcFirstMoverReport + 
@@ -198,9 +198,9 @@ DoubleGLMMExp2Plot <-
   )
 
 ReportInteractionEmm <-
-  emmeans(ReportLMMExp2Plot, specs = "Rewards", by = "Effort")
+  emmeans(lmmReportExp2Plot, specs = "Rewards", by = "Effort")
 DoubleInteractionEmm <-
-  emmeans(DoubleGLMMExp2Plot, "Rewards", by = "Effort", type = "response")
+  emmeans(glmmDoubleExp2Plot, "Rewards", by = "Effort", type = "response")
 
 ```
 
