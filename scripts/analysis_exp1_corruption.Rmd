@@ -54,14 +54,14 @@ FirstMoverData <-
 
 ###### Part 4: Analysis
 ```{r, echo = F}
-
+# Analyse data of second movers
 AggregateData <-
 SecondMoverData %>%
   group_by(Partnership, Effort, ID.number) %>%
   summarise(Double = mean(Double)*36)
 wilcox.test(Double ~ Effort, AggregateData)
 
-## Now estimating models with the Afex package
+## Now estimate models with the Afex package
 glmmDouble <- 
   mixed(Double ~
           Partnership*Effort +
@@ -147,8 +147,45 @@ tableEffortReport <-
 ```
 
 
+
+```{r test individual v collaborative for first movers}
+
+## Individual v Collaborative
+
+CollaborativeReports <-
+  Data %>% 
+    filter(Condition == "Collaborative", 
+           PlayerNo == "First Mover") %>% 
+    group_by(ID.number) %>%
+    summarise(Report = mean(Report))
+
+IndividualReports <-            
+  Data %>%
+    filter(Condition == "Post-Collaborative", 
+           PlayerNo == "First Mover") %>%
+    group_by(ID.number) %>%
+    summarise(Report = mean(Report))
+
+Data %>% 
+    filter(Condition != "Pre-Collaborative", 
+           PlayerNo == "First Mover") %>% 
+  group_by(Condition) %>%
+    summarise(
+      meanReport = mean(Report),
+      medianReport = median(Report),
+              sdReport = sd(Report))
+
+wsrCollaborativeIndividual <-
+  wilcox.test(IndividualReports$Report, 
+              CollaborativeReports$Report, paired = TRUE)
+-qnorm(wsrCollaborativeIndividual$p.value)
+
+
+```
+
+
+
 ```{r test pre-collaborative v post-collaborative}
-#########################
 
 PreIndividual <-
   Data %>% 
@@ -165,52 +202,15 @@ PostIndividual <-
 Data %>%
   filter(Condition != "Collaborative") %>%
   group_by(Condition) %>%
-  summarise(median = median(Report),
+  summarise(meanReport = mean(Report),
+            median = median(Report),
             sd = sd(Report))
 
 wsrIndividual <- wilcox.test(PreIndividual$Report, PostIndividual$Report, paired = TRUE)
 wsrIndividual
 cor.test(PreIndividual$Report, PostIndividual$Report)
-
-
-```
-
-
-```{r test individual v collaborative for first movers}
-
-## Individual v Collaborative
-
-CollaborativeReports <-
-  Data %>% 
-    filter(Condition == "Collaborative", PlayerNo == "First Mover") %>% 
-    group_by(ID.number) %>%
-    summarise(Report = mean(Report))
-
-IndividualReports <-            
-  Data %>%
-    filter(Condition == "Post-Colab", PlayerNo == "First Mover") %>%
-    group_by(ID.number) %>%
-    summarise(Report = mean(Report))
-
-Data %>% 
-    filter(Condition != "Collaborative", PlayerNo == "First Mover") %>% 
-    summarise(medianReport = median(Report),
-              sdReport = sd(Report))
-
-wsrCollaborativeIndividual <-
-  wilcox.test(IndividualReports$Report, CollaborativeReports$Report, paired = TRUE)
-cor.test(IndividualReports$Report, CollaborativeReports$Report)
-
-ggplot(Data %>% 
-         filter(Condition != "Pre-Colab", PlayerNo == "First Mover"),
-       aes(x = Report, fill = Condition)) +
-  geom_density() +
-  scale_fill_viridis_d(begin = .2, end = .7) +
-  theme_light()
-  
+-qnorm(wsrIndividual$p.value)
 
 ```
-
-
 
 

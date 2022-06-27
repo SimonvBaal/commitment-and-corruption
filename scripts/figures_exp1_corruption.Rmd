@@ -402,6 +402,18 @@ ggplot(FullData %>%
 
 ```
 
+```{r individual v collaborative plot}
+ggplot(Data %>% 
+         filter(Condition != "Pre-Colab", PlayerNo == "First Mover"),
+       aes(x = Report, fill = Condition)) +
+  geom_density() +
+  scale_fill_viridis_d(begin = .2, end = .7) +
+  theme_light()
+  
+
+
+```
+
 ```{r regression table}
 #### 
 

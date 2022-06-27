@@ -231,9 +231,25 @@ write_csv(DataExp2, here("output/data/data_corruption-exp2.csv"))
 FirstMoverDataExp2 <- 
   DataExp2 %>% filter(MoverNo == 1)
 
+write_csv(FirstMoverDataExp2,
+          here("output/data/data_corruption-exp2_first-mover.csv"))
+
 SecondMoverDataExp2 <- 
   DataExp2 %>% 
   filter(MoverNo == 2) %>%
   mutate(FirstMoverReport = FirstMoverDataExp2$Report)
 
+write_csv(FirstMoverDataExp2,
+          here("output/data/data_corruption-exp2_first-mover.csv"))
+
 ```
+
+
+```{r clean up environment}
+
+rm(list = ls())
+
+
+```
+
+
