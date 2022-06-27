@@ -1,174 +1,19 @@
 ---
-title: "CorruptionExperiment1"
+title: "Commitment and Corruption Exp1 - Figures"
 author: "Simon van Baal"
-date: "15/07/2020"
+date: '2022-06-27'
 output: html_document
 ---
 
-```{r initialisation}
-library(afex)
-library(lme4)
-library(emmeans)
+```{r setup, include=FALSE}
+library(ggplot2)
 library(ggpubr)
 library(stargazer)
 ```
 
 
-###### Part 4: Analysis
-```{r, echo = F}
-
-AggregateData <-
-SecondMoverData %>%
-  group_by(Partnership, Effort, ID.number) %>%
-  summarise(Double = mean(Double)*36)
-wilcox.test(Double ~ Effort, AggregateData)
-
-## Now estimating models with the Afex package
-glmmDouble <- 
-  mixed(Double ~
-          Partnership*Effort +
-          zcReportFirstMover +
-          Order +
-          (Partnership + Effort + zcReportFirstMover|ID.number), 
-        data = 
-          SecondMoverData %>% 
-          mutate(
-    Partnership = ifelse(Partnership == "Long Partnership", "Long", "Short")
-  ),
-        family = binomial, method = 'LRT')
-nice(glmmDouble)
-
-pairEffortDouble <-
-  pairs(
-    emmeans(glmmDouble, "Effort"),
-    type = 'response',
-    adjust = 'fdr',
-    reverse = T
-  )
-pairPartnershipDouble <-
-  pairs(
-    emmeans(glmmDouble, "Partnership", type = 'response'),
-    adjust = 'fdr',
-    reverse = F
-  )
-pairInteractionDouble <-
-  pairs(
-    emmeans(
-      glmmDouble,
-      specs = "Effort",
-      by = "Partnership",
-      type = 'response'
-    ),
-    reverse = TRUE,
-    adjust = 'fdr'
-  )
-
-# # Confidence intervals can be called as follows:
-# confint(pairEffortDouble)
-# 
-# confint(pairPartnershipDouble)
-# 
-# confint(pairInteractionDouble)
-
-```
-
-
-
-
-```{r analysis of first mover reports}
-
-lmmReport <- mixed(Report ~
-                     Partnership*Effort +
-                     Order +
-                     (Partnership + Effort|ID.number), 
-                   data = FirstMoverData %>% mutate(
-    Partnership = ifelse(Partnership == "Long Partnership", "Long", "Short")
-  ))
-summary(lmmReport)
-
-pairEffortReport <-
-  pairs(emmeans(lmmReport, 'Effort'), adjust = 'fdr', reverse = T)
-pairPartnershipReport <-
-  pairs(emmeans(lmmReport, 'Partnership'), adjust = 'fdr')
-pairEffortPartnershipReport <-
-  pairs(emmeans(lmmReport, 'Effort', by = 'Partnership'), adjust = 'fdr')
-
-tableEffortReport <-
-  FirstMoverData %>%
-  group_by(Effort) %>%
-  summarise(mean = round(mean(Report, na.rm = T), 2),
-            sd = round(sd(Report, na.rm = T), 2))
-
-## Here's one for Partnership
-# FirstMoverData %>%
-#   group_by(Partnership) %>%
-#   summarise(mean = round(mean(Report, na.rm = T), 2),
-#             sd = round(sd(Report, na.rm = T), 2))
-
-
-```
-
-
-```{r test pre-collaborative v post-collaborative}
-#########################
-
-PreIndividual <-
-  Data %>% 
-  group_by(ID.number) %>% 
-  filter(Condition == "Pre-Collaborative") %>% 
-  summarise(Report = mean(Report))
-
-PostIndividual <-
-  Data %>%
-  group_by(ID.number) %>%
-  filter(Condition == "Post-Collaborative") %>%
-  summarise(Report = mean(Report))
-
-Data %>%
-  filter(Condition != "Collaborative") %>%
-  group_by(Condition) %>%
-  summarise(median = median(Report),
-            sd = sd(Report))
-
-wsrIndividual <- wilcox.test(PreIndividual$Report, PostIndividual$Report, paired = TRUE)
-wsrIndividual
-cor.test(PreIndividual$Report, PostIndividual$Report)
-
-
-```
-
-
-```{r test individual v collaborative for first movers}
-
-## Individual v Collaborative
-
-CollaborativeReports <-
-  Data %>% 
-    filter(Condition == "Collaborative", PlayerNo == "First Mover") %>% 
-    group_by(ID.number) %>%
-    summarise(Report = mean(Report))
-
-IndividualReports <-            
-  Data %>%
-    filter(Condition != "Collaborative", PlayerNo == "First Mover") %>%
-    group_by(ID.number) %>%
-    summarise(Report = mean(Report))
-
-Data %>% 
-    filter(Condition != "Collaborative", PlayerNo == "First Mover") %>% 
-    summarise(medianReport = median(Report),
-              sdReport = sd(Report))
-
-wsrCollaborativeIndividual <-
-  wilcox.test(IndividualReports$Report, CollaborativeReports$Report, paired = TRUE)
-cor.test(IndividualReports$Report, CollaborativeReports$Report)
-
-```
-
-
 
 ```{r Figures}
-#################################### Part 5: Figures
 
 # The palette with black:
 cbbPalette <-
@@ -571,6 +416,3 @@ stargazer(glmmDouble,
 
 
 ```
-
-
-

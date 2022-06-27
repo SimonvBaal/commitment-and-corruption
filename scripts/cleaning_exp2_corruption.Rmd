@@ -7,14 +7,17 @@ output: html_document
 
 
 ```{r setup}
-library(tidyverse)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(here)
 library(ids)
 ```
 
 
 
 ```{r Load Data, include=FALSE}
-RawData <- read_csv("./raw-data/raw-data_exp2_corruption.csv")
+RawData <- read_csv(here("raw-data/raw-data_exp2_corruption.csv"))
 ```
 
 
@@ -223,7 +226,7 @@ DataExp2 <-
 
 ```{r finish up}
 
-write_csv(DataExp2, "./data/data_corruption-exp2.csv")
+write_csv(DataExp2, here("output/data/data_corruption-exp2.csv"))
 
 FirstMoverDataExp2 <- 
   DataExp2 %>% filter(MoverNo == 1)

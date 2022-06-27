@@ -7,28 +7,34 @@ output: html_document
 
 ```{r setup}
 
-# Apologies, the code to the first experiment is very inefficient.
-library(tidyverse)
+# The code to the first experiment is quite inefficient; I attempted to
+# clean it up somewhat.
+library(readr)
+library(dplyr)
+library(tidyr)
+library(here)
+library(stringr)
 
 # renv::restore()
 ```
 
 
 ```{r Loading data}
-Q <- read.csv("./raw-data/raw-data_questionnaire_exp1_corruption.csv", 
+# Load data from questionnaires
+Q <- read.csv(here("raw-data/raw-data_questionnaire_exp1_corruption.csv"), 
               stringsAsFactors = FALSE)
 
 # These are the collaborative rounds
 CorrCollaborative <-
-  read.csv("./raw-data/raw-data_collaborative_exp1_corruption.csv")
+  read.csv(here("raw-data/raw-data_collaborative_exp1_corruption.csv"))
 CorrCollaborative2 <-
-  read.csv("./raw-data/raw-data_collaborative-fall_exp1_corruption.csv")
+  read.csv(here("raw-data/raw-data_collaborative-fall_exp1_corruption.csv"))
 
 ## Practice and individual rolls
 CorrIndividual <-
-  read.csv("./raw-data/raw-data_individual_exp1_corruption.csv")
+  read.csv(here("raw-data/raw-data_individual_exp1_corruption.csv"))
 CorrIndividual2 <-
-  read.csv("./raw-data/raw-data_individual-fall_exp1_corruption.csv")
+  read.csv(here("raw-data/raw-data_individual-fall_exp1_corruption.csv"))
 
 ```
 
@@ -525,14 +531,6 @@ rm(Studies, Area)
 ```
 
 
-```{r finish up main dataset for saving}
-Data <-
-  Data %>% 
-  arrange(group, round, team, subject)
-write_csv(Data, "./data/data_corruption-exp1.csv")
-
-
-```
 
 ```{r separate into two datasets for the analysis}
 
@@ -544,29 +542,30 @@ Data %>%
   filter(Condition == "Collaborative", PlayerNo == "Second Mover") %>%
   mutate(ReportFirstMover = as.numeric(FirstMoverData$Report))
 
-SecondMoverData <-
-  SecondMoverData %>%
-  mutate(
-    zcReportFirstMover = ReportFirstMover - mean(ReportFirstMover, na.rm = TRUE),
-    Effort = factor(
-      ifelse(HighEffort == 1, "High Effort", "Low Effort"),
-      levels = c("Low Effort", "High Effort")
-    ),
-    Partnership = factor(
-      ifelse(LongPartnership == 1, "Long Partnership", "Short Partnership"),
-      levels = c("Short Partnership", "Long Partnership")
-    )
-  )
 
-FirstMoverData <-
-  FirstMoverData %>%
-  mutate(Effort = factor(
-    ifelse(HighEffort == 1, "High Effort", "Low Effort"),
-    levels = c("Low Effort", "High Effort")
-  ),
-  Partnership = factor(
-    ifelse(LongPartnership == 1, "Long Partnership", "Short Partnership"),
-    levels = c("Short Partnership", "Long Partnership")
-  ))
 ```
 
+
+
+```{r finish up datasets for saving}
+Data <-
+  Data %>% 
+  arrange(group, round, team, subject)
+write_csv(Data, 
+          here("output/data/data_corruption-exp1.csv"))
+
+write_csv(FirstMoverData, 
+          here("output/data/data_corruption-exp1_first-mover.csv"))
+
+write_csv(SecondMoverData, 
+          here("output/data/data_corruption-exp1_second-mover.csv"))
+
+```
+
+
+```{r clean up environment}
+
+rm(list = ls())
+
+
+```

@@ -1,0 +1,216 @@
+---
+title: "CorruptionExperiment1"
+author: "Simon van Baal"
+date: "15/07/2020"
+output: html_document
+---
+
+```{r initialisation}
+library(afex)
+library(lme4)
+library(emmeans)
+```
+
+```{r load clean data}
+FirstMoverData <-
+  read_csv(here("output/data/data_corruption-exp1_first-mover.csv"))
+
+SecondMoverData <- 
+  read_csv(here("output/data/data_corruption-exp1_second-mover.csv"))
+
+Data <-
+  read_csv(here("output/data/data_corruption-exp1.csv"))
+
+```
+
+```{r change factors}
+SecondMoverData <-
+  SecondMoverData %>%
+  mutate(
+    zcReportFirstMover = ReportFirstMover - mean(ReportFirstMover, na.rm = TRUE),
+    Effort = factor(
+      ifelse(HighEffort == 1, "High Effort", "Low Effort"),
+      levels = c("Low Effort", "High Effort")
+    ),
+    Partnership = factor(
+      ifelse(LongPartnership == 1, "Long Partnership", "Short Partnership"),
+      levels = c("Short Partnership", "Long Partnership")
+    )
+  )
+
+FirstMoverData <-
+  FirstMoverData %>%
+  mutate(Effort = factor(
+    ifelse(HighEffort == 1, "High Effort", "Low Effort"),
+    levels = c("Low Effort", "High Effort")
+  ),
+  Partnership = factor(
+    ifelse(LongPartnership == 1, "Long Partnership", "Short Partnership"),
+    levels = c("Short Partnership", "Long Partnership")
+  ))
+
+```
+
+
+###### Part 4: Analysis
+```{r, echo = F}
+
+AggregateData <-
+SecondMoverData %>%
+  group_by(Partnership, Effort, ID.number) %>%
+  summarise(Double = mean(Double)*36)
+wilcox.test(Double ~ Effort, AggregateData)
+
+## Now estimating models with the Afex package
+glmmDouble <- 
+  mixed(Double ~
+          Partnership*Effort +
+          zcReportFirstMover +
+          Order +
+          (Partnership + Effort + zcReportFirstMover|ID.number), 
+        data = 
+          SecondMoverData %>% 
+          mutate(
+    Partnership = ifelse(Partnership == "Long Partnership", "Long", "Short")
+  ),
+        family = binomial, method = 'LRT')
+nice(glmmDouble)
+
+pairEffortDouble <-
+  pairs(
+    emmeans(glmmDouble, "Effort"),
+    type = 'response',
+    adjust = 'fdr',
+    reverse = T
+  )
+pairPartnershipDouble <-
+  pairs(
+    emmeans(glmmDouble, "Partnership", type = 'response'),
+    adjust = 'fdr',
+    reverse = F
+  )
+pairInteractionDouble <-
+  pairs(
+    emmeans(
+      glmmDouble,
+      specs = "Effort",
+      by = "Partnership",
+      type = 'response'
+    ),
+    reverse = TRUE,
+    adjust = 'fdr'
+  )
+
+# # Confidence intervals can be called as follows:
+# confint(pairEffortDouble)
+# 
+# confint(pairPartnershipDouble)
+# 
+# confint(pairInteractionDouble)
+
+```
+
+
+
+
+```{r analysis of first mover reports}
+
+lmmReport <- mixed(Report ~
+                     Partnership*Effort +
+                     Order +
+                     (Partnership + Effort|ID.number), 
+                   data = FirstMoverData %>% mutate(
+    Partnership = ifelse(Partnership == "Long Partnership", "Long", "Short")
+  ))
+summary(lmmReport)
+
+pairEffortReport <-
+  pairs(emmeans(lmmReport, 'Effort'), adjust = 'fdr', reverse = T)
+pairPartnershipReport <-
+  pairs(emmeans(lmmReport, 'Partnership'), adjust = 'fdr')
+pairEffortPartnershipReport <-
+  pairs(emmeans(lmmReport, 'Effort', by = 'Partnership'), adjust = 'fdr')
+
+tableEffortReport <-
+  FirstMoverData %>%
+  group_by(Effort) %>%
+  summarise(mean = round(mean(Report, na.rm = T), 2),
+            sd = round(sd(Report, na.rm = T), 2))
+
+## Here's one for Partnership
+# FirstMoverData %>%
+#   group_by(Partnership) %>%
+#   summarise(mean = round(mean(Report, na.rm = T), 2),
+#             sd = round(sd(Report, na.rm = T), 2))
+
+
+```
+
+
+```{r test pre-collaborative v post-collaborative}
+#########################
+
+PreIndividual <-
+  Data %>% 
+  group_by(ID.number) %>% 
+  filter(Condition == "Pre-Collaborative") %>% 
+  summarise(Report = mean(Report))
+
+PostIndividual <-
+  Data %>%
+  group_by(ID.number) %>%
+  filter(Condition == "Post-Collaborative") %>%
+  summarise(Report = mean(Report))
+
+Data %>%
+  filter(Condition != "Collaborative") %>%
+  group_by(Condition) %>%
+  summarise(median = median(Report),
+            sd = sd(Report))
+
+wsrIndividual <- wilcox.test(PreIndividual$Report, PostIndividual$Report, paired = TRUE)
+wsrIndividual
+cor.test(PreIndividual$Report, PostIndividual$Report)
+
+
+```
+
+
+```{r test individual v collaborative for first movers}
+
+## Individual v Collaborative
+
+CollaborativeReports <-
+  Data %>% 
+    filter(Condition == "Collaborative", PlayerNo == "First Mover") %>% 
+    group_by(ID.number) %>%
+    summarise(Report = mean(Report))
+
+IndividualReports <-            
+  Data %>%
+    filter(Condition == "Post-Colab", PlayerNo == "First Mover") %>%
+    group_by(ID.number) %>%
+    summarise(Report = mean(Report))
+
+Data %>% 
+    filter(Condition != "Collaborative", PlayerNo == "First Mover") %>% 
+    summarise(medianReport = median(Report),
+              sdReport = sd(Report))
+
+wsrCollaborativeIndividual <-
+  wilcox.test(IndividualReports$Report, CollaborativeReports$Report, paired = TRUE)
+cor.test(IndividualReports$Report, CollaborativeReports$Report)
+
+ggplot(Data %>% 
+         filter(Condition != "Pre-Colab", PlayerNo == "First Mover"),
+       aes(x = Report, fill = Condition)) +
+  geom_density() +
+  scale_fill_viridis_d(begin = .2, end = .7) +
+  theme_light()
+  
+
+```
+
+
+
+
